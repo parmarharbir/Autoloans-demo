@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // ─────────────────────────────────────────────
@@ -56,35 +57,221 @@ const PROVINCES = [
 
 const BG: string[] = [
   'linear-gradient(135deg,#0a1628 0%,#0d2137 55%,#1a1a2e 100%)',   // 1 navy
-  'linear-gradient(135deg,#9a3412 0%,#ea580c 55%,#fb923c 100%)',   // 2 orange
-  'linear-gradient(135deg,#713f12 0%,#ca8a04 55%,#facc15 100%)',   // 3 yellow
-  'linear-gradient(135deg,#14532d 0%,#16a34a 55%,#4ade80 100%)',   // 4 green
-  'linear-gradient(135deg,#134e4a 0%,#0d9488 55%,#2dd4bf 100%)',   // 5 teal
-  'linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#60a5fa 100%)',   // 6 blue
-  'linear-gradient(135deg,#4c1d95 0%,#7c3aed 55%,#a78bfa 100%)',   // 7 purple
-  'linear-gradient(135deg,#831843 0%,#db2777 55%,#f9a8d4 100%)',   // 8 pink
-  'linear-gradient(135deg,#9a3412 0%,#ea580c 55%,#fb923c 100%)',   // 9 orange
-  'linear-gradient(135deg,#052e16 0%,#15803d 55%,#4ade80 100%)',   // 10 green
+  'linear-gradient(135deg,#1a0a2e 0%,#2d1b4e 55%,#4c1d95 100%)',   // 2 purple (vehicle type)
+  'linear-gradient(135deg,#9a3412 0%,#ea580c 55%,#fb923c 100%)',   // 3 orange
+  'linear-gradient(135deg,#713f12 0%,#ca8a04 55%,#facc15 100%)',   // 4 yellow
+  'linear-gradient(135deg,#14532d 0%,#16a34a 55%,#4ade80 100%)',   // 5 green
+  'linear-gradient(135deg,#134e4a 0%,#0d9488 55%,#2dd4bf 100%)',   // 6 teal
+  'linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#60a5fa 100%)',   // 7 blue
+  'linear-gradient(135deg,#4c1d95 0%,#7c3aed 55%,#a78bfa 100%)',   // 8 purple
+  'linear-gradient(135deg,#831843 0%,#db2777 55%,#f9a8d4 100%)',   // 9 pink
+  'linear-gradient(135deg,#9a3412 0%,#ea580c 55%,#fb923c 100%)',   // 10 orange
   'linear-gradient(135deg,#052e16 0%,#15803d 55%,#4ade80 100%)',   // 11 green
-  'linear-gradient(135deg,#713f12 0%,#ca8a04 55%,#facc15 100%)',   // 12 yellow
-  'linear-gradient(135deg,#831843 0%,#db2777 55%,#f9a8d4 100%)',   // 13 pink
-  'linear-gradient(135deg,#500724 0%,#9d174d 55%,#ec4899 100%)',   // 14 deep pink
-  'linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#60a5fa 100%)',   // 15 blue
-  'linear-gradient(135deg,#2e1065 0%,#6d28d9 55%,#c084fc 100%)',   // 16 purple
-  'linear-gradient(135deg,#052e16 0%,#166534 55%,#22c55e 100%)',   // 17 green
-  'linear-gradient(135deg,#431407 0%,#c2410c 55%,#fdba74 100%)',   // 18 orange
+  'linear-gradient(135deg,#052e16 0%,#15803d 55%,#4ade80 100%)',   // 12 green
+  'linear-gradient(135deg,#713f12 0%,#ca8a04 55%,#facc15 100%)',   // 13 yellow
+  'linear-gradient(135deg,#831843 0%,#db2777 55%,#f9a8d4 100%)',   // 14 pink
+  'linear-gradient(135deg,#500724 0%,#9d174d 55%,#ec4899 100%)',   // 15 deep pink
+  'linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 55%,#60a5fa 100%)',   // 16 blue
+  'linear-gradient(135deg,#2e1065 0%,#6d28d9 55%,#c084fc 100%)',   // 17 purple
+  'linear-gradient(135deg,#052e16 0%,#166534 55%,#22c55e 100%)',   // 18 green
   'linear-gradient(135deg,#831843 0%,#6d28d9 50%,#1e3a8a 100%)',   // 19 pink→blue
 ]
+
+// Vehicle image URLs — side-profile shots
+const VEHICLE_IMAGES: Record<string, string> = {
+  'Sedan':            'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=700&q=85',
+  'SUV':              'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=700&q=85',
+  'Truck':            'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=700&q=85',
+  'Van / Minivan':    'https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=700&q=85',
+  'Coupe':            'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=700&q=85',
+  'Convertible':      'https://images.unsplash.com/photo-1502161254066-6c74afbf07aa?w=700&q=85',
+  'Electric / Hybrid':'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=700&q=85',
+  'Other':            'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=700&q=85',
+  'default':          'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=700&q=85',
+}
+
+// Scenic road backgrounds per vehicle type
+const SCENERY_IMAGES: Record<string, string> = {
+  'Sedan':            'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=90',
+  'SUV':              'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=90',
+  'Truck':            'https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=1200&q=90',
+  'Van / Minivan':    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1200&q=90',
+  'Coupe':            'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=90',
+  'Convertible':      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=90',
+  'Electric / Hybrid':'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1200&q=90',
+  'Other':            'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1200&q=90',
+  'default':          'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=90',
+}
 
 // ─────────────────────────────────────────────
 // ANIMATION VARIANTS
 // ─────────────────────────────────────────────
 const slideVariants = {
-  enter: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
+  enter: (dir: number) => ({ y: dir > 0 ? '40%' : '-40%', opacity: 0 }),
+  center: { y: 0, opacity: 1 },
+  exit: (dir: number) => ({ y: dir > 0 ? '-40%' : '40%', opacity: 0 }),
 }
-const slideTrans = { duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] as const }
+const slideTrans = { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as const }
+
+// ─────────────────────────────────────────────
+// VEHICLE PANEL — cinematic driving scene
+// ─────────────────────────────────────────────
+function VehiclePanel({ vehicleType, step }: { vehicleType: string; step: number }) {
+  const sceneSrc = SCENERY_IMAGES[vehicleType] || SCENERY_IMAGES['default']
+  const carSrc   = VEHICLE_IMAGES[vehicleType] || VEHICLE_IMAGES['default']
+
+  // Car position shifts as user progresses
+  let shiftX = '0%'
+  let carScale = 1
+  if (step >= 5  && step <= 9)  shiftX = '5%'
+  if (step >= 10 && step <= 14) shiftX = '-5%'
+  if (step >= 15 && step <= 18) carScale = 1.05
+  if (step === 19)               carScale = 1.1
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-[#050508]">
+
+      {/* ── Layer 1: Scenic road — panning left ──────── */}
+      <AnimatePresence>
+        <motion.div
+          key={sceneSrc}
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1 }}
+        >
+          {/* Oversized to allow pan without revealing edges */}
+          <div
+            className="absolute top-0 left-0 bottom-0"
+            style={{ width: '115%', animation: 'scenePan 20s linear infinite' }}
+          >
+            <Image
+              src={sceneSrc}
+              alt="Scenic road"
+              fill
+              priority
+              sizes="(max-width: 768px) 115vw, 57.5vw"
+              style={{ objectFit: 'cover', objectPosition: 'center' }}
+            />
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* ── Layer 2: Road surface gradient at bottom ─── */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
+        style={{
+          height: '30%',
+          background: 'linear-gradient(to top, rgba(15,15,20,0.9) 0%, transparent 100%)',
+        }}
+      />
+
+      {/* ── Layer 3: Vehicle — bobbing drive animation ── */}
+      <div
+        className="absolute z-20 pointer-events-none"
+        style={{
+          bottom: '6%',
+          left: '50%',
+          width: '90%',
+          height: '48%',
+          transform: `translateX(calc(-50% + ${shiftX})) scale(${carScale})`,
+          transition: 'transform 1.2s cubic-bezier(0.25,0.46,0.45,0.94)',
+        }}
+      >
+        <AnimatePresence>
+          <motion.div
+            key={carSrc}
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7 }}
+          >
+            <div style={{ position: 'relative', width: '100%', height: '100%', animation: 'carDrive 1.8s ease-in-out infinite' }}>
+              <Image
+                src={carSrc}
+                alt="Vehicle"
+                fill
+                priority
+                sizes="(max-width: 768px) 90vw, 45vw"
+                style={{
+                  objectFit: 'contain',
+                  objectPosition: 'center bottom',
+                  filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.7)) drop-shadow(0 4px 12px rgba(0,0,0,0.5))',
+                }}
+              />
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* ── Layer 4a: Sunshine lens flare (top-right) ── */}
+      <div
+        className="absolute top-0 right-0 z-30 pointer-events-none"
+        style={{
+          width: '65%',
+          height: '65%',
+          background: 'radial-gradient(circle at 75% 20%, rgba(255,220,100,0.18) 0%, rgba(255,200,50,0.06) 40%, transparent 70%)',
+          animation: 'lensFlare 5s ease-in-out infinite',
+        }}
+      />
+
+      {/* ── Layer 4b: Speed lines (left side) ────────── */}
+      {[0, 1, 2, 3].map(i => (
+        <div
+          key={i}
+          className="absolute z-30 pointer-events-none"
+          style={{
+            top: `${18 + i * 14}%`,
+            left: 0,
+            width: '38%',
+            height: '1px',
+            background: `rgba(255,255,255,${0.05 + i * 0.005})`,
+            transform: `rotate(${-1.5 + i * 0.6}deg)`,
+            transformOrigin: 'left center',
+            animation: `speedLine ${1.4 + i * 0.35}s linear ${i * 0.4}s infinite`,
+          }}
+        />
+      ))}
+
+      {/* ── Layer 4c: Bottom road darkness ───────────── */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-30 pointer-events-none"
+        style={{
+          height: '12%',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)',
+        }}
+      />
+
+      {/* ── Layer 4d: Edge vignette ───────────────────── */}
+      <div
+        className="absolute inset-0 z-30 pointer-events-none"
+        style={{
+          boxShadow: 'inset 0 0 100px rgba(0,0,0,0.45), inset 0 0 240px rgba(0,0,0,0.2)',
+        }}
+      />
+
+      {/* ── Layer 5: Cinematic scanline texture ──────── */}
+      <div
+        className="absolute inset-0 z-30 pointer-events-none"
+        style={{
+          background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 1px, rgba(0,0,0,0.022) 1px, rgba(0,0,0,0.022) 2px)',
+        }}
+      />
+
+      {/* Edge blends into content panel */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-40 h-24 md:hidden"
+        style={{ background: 'linear-gradient(to bottom, transparent, rgba(10,10,15,0.75))' }}
+      />
+      <div
+        className="absolute top-0 right-0 bottom-0 z-40 w-24 hidden md:block"
+        style={{ background: 'linear-gradient(to right, transparent, rgba(10,10,15,0.65))' }}
+      />
+    </div>
+  )
+}
 
 // ─────────────────────────────────────────────
 // SHARED UI COMPONENTS
@@ -92,33 +279,27 @@ const slideTrans = { duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] as const }
 function ProgressBar({ step }: { step: number }) {
   const pct = Math.round(((step - 1) / (TOTAL_STEPS - 1)) * 100)
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 h-1.5 bg-black/20">
+    <div className="fixed top-0 left-0 right-0 z-50 h-[3px] bg-black/40">
       <motion.div
-        className="h-full bg-blue-400"
-        style={{ boxShadow: '0 0 8px rgba(96,165,250,0.9)' }}
+        className="h-full"
+        style={{
+          background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 20%, #ec4899 40%, #8b5cf6 60%, #3b82f6 80%, #06b6d4 100%)',
+          boxShadow: '0 0 10px rgba(139,92,246,0.8), 0 0 20px rgba(59,130,246,0.4)',
+        }}
         animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.45, ease: 'easeOut' }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
       />
-      {step > 1 && step < TOTAL_STEPS && (
-        <motion.span
-          className="absolute right-3 top-2.5 text-white/60 text-xs font-semibold"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          {pct}%
-        </motion.span>
-      )}
     </div>
   )
 }
 
 function Logo() {
   return (
-    <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
+    <div className="fixed top-3 left-4 z-50 flex items-center gap-2">
       <span className="text-xl leading-none">🚗</span>
       <span
-        className="font-bold text-white text-base tracking-tight"
-        style={{ textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}
+        className="font-bold text-white text-sm tracking-tight"
+        style={{ textShadow: '0 1px 8px rgba(0,0,0,0.8)' }}
       >
         AutoLoans.ca
       </span>
@@ -151,16 +332,17 @@ function PillOpt({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-5 py-4 rounded-full font-semibold text-lg transition-all duration-150 shadow-md
+      className={`w-full flex items-center gap-3 px-5 py-4 rounded-full font-semibold text-lg transition-all duration-200 backdrop-blur-xl
         ${selected
-          ? 'bg-white text-gray-900 shadow-xl ring-4 ring-white/40 scale-[1.01]'
-          : 'bg-white/15 text-white hover:bg-white/25 backdrop-blur-sm border border-white/20 hover:scale-[1.005]'
+          ? 'bg-white/20 text-white ring-2 ring-white/50 scale-[1.01] border border-white/40'
+          : 'bg-white/8 text-white/90 border border-white/15 hover:bg-white/15 hover:border-white/30 hover:scale-[1.005]'
         }`}
+      style={selected ? { boxShadow: '0 0 20px rgba(255,255,255,0.25), 0 0 40px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.2)' } : {}}
     >
       {icon && <span className="text-2xl shrink-0 leading-none">{icon}</span>}
       <span className="flex-1 text-left">{label}</span>
       {selected && (
-        <svg className="w-5 h-5 text-blue-600 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+        <svg className="w-5 h-5 text-white/80 shrink-0" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
         </svg>
       )}
@@ -196,11 +378,19 @@ function ContBtn({ onClick, disabled = false, label = 'CONTINUE →' }: {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full py-5 rounded-full font-bold text-xl tracking-wider shadow-2xl transition-all duration-200
-        ${disabled
-          ? 'bg-blue-500/40 text-white/50 cursor-not-allowed'
-          : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-[0.98] hover:shadow-[0_8px_30px_rgba(59,130,246,0.5)]'
-        }`}
+      className="w-full py-5 rounded-full font-bold text-xl tracking-wider transition-all duration-200 active:scale-[0.98]"
+      style={disabled
+        ? {
+            background: 'rgba(99,102,241,0.25)',
+            color: 'rgba(255,255,255,0.35)',
+            cursor: 'not-allowed',
+          }
+        : {
+            background: 'linear-gradient(135deg, #3b82f6 0%, #7c3aed 60%, #6d28d9 100%)',
+            color: '#fff',
+            boxShadow: '0 0 30px rgba(124,58,237,0.55), 0 0 60px rgba(59,130,246,0.25), 0 8px 24px rgba(0,0,0,0.4)',
+          }
+      }
     >
       {label}
     </button>
@@ -210,10 +400,42 @@ function ContBtn({ onClick, disabled = false, label = 'CONTINUE →' }: {
 function Heading({ text, sub }: { text: string; sub?: string }) {
   return (
     <div className="text-center mb-6">
-      <h2 className="text-2xl md:text-3xl font-bold text-white leading-snug" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.3)' }}>
+      <h2
+        className="text-2xl md:text-3xl font-bold text-white leading-snug"
+        style={{ textShadow: '0 2px 20px rgba(0,0,0,0.6), 0 4px 40px rgba(0,0,0,0.3)' }}
+      >
         {text}
       </h2>
-      {sub && <p className="text-white/70 text-sm mt-2 leading-relaxed">{sub}</p>}
+      {sub && <p className="text-white/65 text-sm mt-2 leading-relaxed" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>{sub}</p>}
+    </div>
+  )
+}
+
+function StepDots({ step, total }: { step: number; total: number }) {
+  if (step <= 1 || step >= total) return null
+  return (
+    <div className="fixed bottom-4 left-1/2 md:left-3/4 -translate-x-1/2 z-50 flex items-center gap-1.5">
+      {Array.from({ length: total - 2 }).map((_, i) => {
+        const s = i + 2
+        const active = s === step
+        const done   = s < step
+        return (
+          <div
+            key={i}
+            className="rounded-full transition-all duration-400"
+            style={{
+              width:      active ? 18 : 5,
+              height:     5,
+              background: active
+                ? 'rgba(255,255,255,0.95)'
+                : done
+                  ? 'rgba(255,255,255,0.45)'
+                  : 'rgba(255,255,255,0.15)',
+              boxShadow: active ? '0 0 8px rgba(255,255,255,0.6)' : undefined,
+            }}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -298,49 +520,26 @@ function Confetti() {
 // STEP COMPONENTS
 // ─────────────────────────────────────────────
 
+// Step 1: Landing hero
 function Step1({ onStart }: { onStart: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100svh-3.5rem)] px-6 text-center">
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1, duration: 0.6 }}
-        className="mb-6"
-      >
-        <svg width="130" height="86" viewBox="0 0 130 86" fill="none" className="drop-shadow-2xl mx-auto">
-          <ellipse cx="65" cy="76" rx="55" ry="6" fill="rgba(0,0,0,0.25)" />
-          <rect x="8" y="42" width="114" height="26" rx="5" fill="#2563eb" />
-          <path d="M16 42 L32 18 L98 18 L114 42 Z" fill="#3b82f6" />
-          <rect x="34" y="22" width="24" height="15" rx="3" fill="rgba(255,255,255,0.85)" />
-          <rect x="62" y="22" width="30" height="15" rx="3" fill="rgba(255,255,255,0.85)" />
-          <circle cx="30" cy="68" r="11" fill="#1e3a8a" />
-          <circle cx="30" cy="68" r="7" fill="#dbeafe" />
-          <circle cx="30" cy="68" r="3.5" fill="#1e3a8a" />
-          <circle cx="100" cy="68" r="11" fill="#1e3a8a" />
-          <circle cx="100" cy="68" r="7" fill="#dbeafe" />
-          <circle cx="100" cy="68" r="3.5" fill="#1e3a8a" />
-          <rect x="106" y="48" width="15" height="7" rx="2" fill="#fbbf24" />
-          <rect x="9" y="48" width="12" height="7" rx="2" fill="#ef4444" />
-          <rect x="8" y="55" width="4" height="4" rx="1" fill="#ef4444" opacity="0.6" />
-        </svg>
-      </motion.div>
-
+    <div className="flex flex-col items-center justify-center min-h-full px-6 text-center py-10">
       <motion.h1
-        className="text-3xl md:text-5xl font-bold text-white leading-tight mb-4"
+        className="text-3xl md:text-4xl font-bold text-white leading-tight mb-4"
         style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
+        transition={{ delay: 0.15, duration: 0.6 }}
       >
         Get Approved for Your<br />
         <span className="text-blue-400">Auto Loan</span> Today
       </motion.h1>
 
       <motion.p
-        className="text-white/70 text-lg mb-8 max-w-sm"
+        className="text-white/70 text-lg mb-8 max-w-xs"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
+        transition={{ delay: 0.25, duration: 0.6 }}
       >
         Bad credit welcome. Fast approvals across Canada. No obligation.
       </motion.p>
@@ -350,7 +549,7 @@ function Step1({ onStart }: { onStart: () => void }) {
         className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xl px-12 py-5 rounded-full shadow-2xl transition-colors duration-200 hover:shadow-[0_8px_40px_rgba(59,130,246,0.6)]"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.6 }}
+        transition={{ delay: 0.35, duration: 0.6 }}
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.97 }}
       >
@@ -361,7 +560,7 @@ function Step1({ onStart }: { onStart: () => void }) {
         className="flex flex-wrap justify-center gap-3 mt-8"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
+        transition={{ delay: 0.55, duration: 0.6 }}
       >
         {[
           { icon: '✅', text: '97% Approval Rate' },
@@ -378,7 +577,30 @@ function Step1({ onStart }: { onStart: () => void }) {
   )
 }
 
-function Step2({ back, value, onChange, onNext }: { back: () => void; value: string; onChange: (v: string) => void; onNext: () => void }) {
+// Step 2: Vehicle TYPE (first question — drives the image)
+function Step2VehicleType({ back, value, onChange, onNext }: { back: () => void; value: string; onChange: (v: string) => void; onNext: () => void }) {
+  const types = [
+    { label: 'Sedan', icon: '🚗' }, { label: 'SUV', icon: '🚙' },
+    { label: 'Truck', icon: '🛻' }, { label: 'Van / Minivan', icon: '🚐' },
+    { label: 'Coupe', icon: '🏎️' }, { label: 'Convertible', icon: '🚘' },
+    { label: 'Electric / Hybrid', icon: '⚡' }, { label: 'Other', icon: '🔍' },
+  ]
+  return (
+    <div className="flex flex-col w-full max-w-md mx-auto px-4 pt-4 pb-8">
+      <BackBtn onClick={back} />
+      <Heading text="What type of vehicle are you looking for?" sub="This helps us find the best match for you" />
+      <div className="flex flex-col gap-3 mb-6">
+        {types.map(t => (
+          <PillOpt key={t.label} label={t.label} icon={t.icon} selected={value === t.label} onClick={() => onChange(t.label)} />
+        ))}
+      </div>
+      <ContBtn onClick={onNext} disabled={!value} />
+    </div>
+  )
+}
+
+// Step 3: Vehicle BRAND
+function Step3VehicleBrand({ back, value, onChange, onNext }: { back: () => void; value: string; onChange: (v: string) => void; onNext: () => void }) {
   const brands = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Hyundai', 'Nissan', 'Kia', 'Mazda', 'RAM', 'Dodge', 'Jeep', 'Other']
   return (
     <div className="flex flex-col w-full max-w-md mx-auto px-4 pt-4 pb-8">
@@ -398,28 +620,6 @@ function Step2({ back, value, onChange, onNext }: { back: () => void; value: str
           >
             {b}
           </button>
-        ))}
-      </div>
-      <ContBtn onClick={onNext} disabled={!value} />
-    </div>
-  )
-}
-
-function Step3({ back, value, onChange, onNext }: { back: () => void; value: string; onChange: (v: string) => void; onNext: () => void }) {
-  const types = [
-    { label: 'Sedan', icon: '🚗' }, { label: 'SUV', icon: '🚙' },
-    { label: 'Truck', icon: '🛻' }, { label: 'Van / Minivan', icon: '🚐' },
-    { label: 'Coupe', icon: '🏎️' }, { label: 'Convertible', icon: '🚘' },
-    { label: 'Electric / Hybrid', icon: '⚡' },
-  ]
-  return (
-    <div className="flex flex-col w-full max-w-md mx-auto px-4 pt-4 pb-8">
-      <BackBtn onClick={back} />
-      <div className="text-[80px] text-center mb-3 leading-none">🔍</div>
-      <Heading text="What type of vehicle are you looking for?" />
-      <div className="flex flex-col gap-3 mb-6">
-        {types.map(t => (
-          <PillOpt key={t.label} label={t.label} icon={t.icon} selected={value === t.label} onClick={() => onChange(t.label)} />
         ))}
       </div>
       <ContBtn onClick={onNext} disabled={!value} />
@@ -782,7 +982,7 @@ function Step18({ back, value, onChange, onNext }: { back: () => void; value: st
 
 function Step19() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100svh-3.5rem)] px-6 text-center">
+    <div className="flex flex-col items-center justify-center min-h-full px-6 text-center py-10">
       <Confetti />
 
       <motion.div
@@ -882,8 +1082,10 @@ export default function FunnelPage() {
   function renderStep() {
     switch (step) {
       case 1:  return <Step1 onStart={next} />
-      case 2:  return <Step2 back={back} value={form.vehicleBrand} onChange={v => update('vehicleBrand', v)} onNext={next} />
-      case 3:  return <Step3 back={back} value={form.vehicleType} onChange={v => update('vehicleType', v)} onNext={next} />
+      // Step 2: Vehicle TYPE (first question — drives the image)
+      case 2:  return <Step2VehicleType back={back} value={form.vehicleType} onChange={v => update('vehicleType', v)} onNext={next} />
+      // Step 3: Vehicle BRAND
+      case 3:  return <Step3VehicleBrand back={back} value={form.vehicleBrand} onChange={v => update('vehicleBrand', v)} onNext={next} />
       case 4:  return <Step4 back={back} first={form.firstName} last={form.lastName} onFirst={v => update('firstName', v)} onLast={v => update('lastName', v)} onNext={next} />
       case 5:  return <Step5 back={back} value={form.email} onChange={v => update('email', v)} onNext={next} />
       case 6:  return <Step6 back={back} value={form.phone} onChange={v => update('phone', v)} onNext={next} />
@@ -905,47 +1107,62 @@ export default function FunnelPage() {
   }
 
   return (
-    <div className="relative" style={{ minHeight: '100svh' }}>
-      {/* Crossfading background gradient */}
-      <AnimatePresence>
-        <motion.div
-          key={`bg-${step}`}
-          className="fixed inset-0 -z-10"
-          style={{ background: BG[step - 1] }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-        />
-      </AnimatePresence>
-
-      {/* Animated background blobs */}
-      <div className="fixed inset-0 -z-10">
-        <BgBlobs hero={step === 1} />
+    <div className="bg-[#0a0a0f]" style={{ minHeight: '100svh' }}>
+      {/* ── VEHICLE PANEL ──────────────────────────────
+          Mobile: fixed strip at the top (40vh tall)
+          Desktop: fixed left half (full height)
+      ─────────────────────────────────────────────── */}
+      <div className="fixed top-0 left-0 right-0 h-[40vh] md:right-auto md:w-1/2 md:h-screen z-10">
+        <VehiclePanel vehicleType={form.vehicleType} step={step} />
       </div>
 
-      <Logo />
+      {/* ── PERSISTENT UI ─────────────────────────── */}
       <ProgressBar step={step} />
+      <Logo />
+      <StepDots step={step} total={TOTAL_STEPS} />
 
-      {/* Step content with slide transitions */}
+      {/* ── CONTENT PANEL ─────────────────────────────
+          Mobile: fixed below vehicle panel
+          Desktop: fixed right half
+      ─────────────────────────────────────────────── */}
       <div
-        className="flex flex-col items-center justify-center overflow-x-hidden"
-        style={{ minHeight: '100svh', paddingTop: '3.5rem', paddingBottom: '2rem' }}
+        className="fixed left-0 right-0 bottom-0 top-[40vh] md:top-0 md:left-1/2 overflow-y-auto z-20"
       >
-        <AnimatePresence mode="wait" custom={direction}>
+        {/* Animated gradient background */}
+        <AnimatePresence>
           <motion.div
-            key={step}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={slideTrans}
-            className="w-full"
-          >
-            {renderStep()}
-          </motion.div>
+            key={`bg-${step}`}
+            className="absolute inset-0 -z-10"
+            style={{ background: BG[step - 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          />
         </AnimatePresence>
+
+        {/* Animated blobs */}
+        <div className="absolute inset-0 -z-10">
+          <BgBlobs hero={step === 1} />
+        </div>
+
+        {/* Step content — vertically centered within the panel */}
+        <div className="flex flex-col min-h-full pt-8 pb-8 md:pt-14">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={step}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={slideTrans}
+              className="flex-1 flex flex-col items-center justify-center w-full"
+            >
+              {renderStep()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )
