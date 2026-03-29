@@ -67,3 +67,52 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+@keyframes blobAnim {
+  0%, 100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    border-radius: 40% 60% 60% 40% / 40% 70% 30% 60%;
+    transform: translate(30px, -40px) scale(1.05);
+  }
+  66% {
+    border-radius: 70% 30% 40% 60% / 60% 40% 60% 30%;
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+
+@keyframes blobAnim2 {
+  0%, 100% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: translate(-30px, -30px) scale(1.08);
+  }
+}
+
+@keyframes particleFloat {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.4; }
+  100% { transform: translateY(-100vh) translateX(25px); opacity: 0; }
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-10px) rotate(0deg) scaleX(1); opacity: 1; }
+  50% { transform: translateY(50vh) rotate(360deg) scaleX(-1); opacity: 0.8; }
+  100% { transform: translateY(110vh) rotate(720deg) scaleX(1); opacity: 0; }
+}
+
+@keyframes successPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes waveScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
