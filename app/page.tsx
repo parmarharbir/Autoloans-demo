@@ -1,13 +1,17 @@
 'use client'
 
-import React from 'react'
-import dynamic from 'next/dynamic'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// ─── Dynamic imports (no SSR) ─────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const DriveScene = dynamic(() => import('./components/DriveScene'), { ssr: false })
+const TOTAL_STEPS = 19
+const TIMESTAMPS = Array.from({ length: TOTAL_STEPS }, (_, i) =>
+  parseFloat(((i / (TOTAL_STEPS - 1)) * 4.8).toFixed(3))
+)
+
+const TEXT_SHADOW = '0 2px 12px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.7)'
+const CARD_SHADOW = '0 8px 40px rgba(0,0,0,0.4), 0 0 60px rgba(245,200,66,0.08)'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,726 +30,675 @@ interface FormData {
   province: string
   postalCode: string
   employment: string
+  employerName: string
+  jobTitle: string
+  timeAtJob: string
+  incomeType: string
   incomeAmount: string
+  incomeStability: string
   housingType: string
   monthlyBudget: string
   creditScore: string
   contactTime: string
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TOTAL_STEPS = 19
-
 const EMPTY_FORM: FormData = {
   vehicleType: '', vehicleBrand: '', firstName: '', lastName: '',
   email: '', phone: '', isCanadian: '', zeroDown: '', ageRange: '',
   street: '', city: '', province: '', postalCode: '',
-  employment: '', incomeAmount: '', housingType: '', monthlyBudget: '',
-  creditScore: '', contactTime: '',
+  employment: '', employerName: '', jobTitle: '', timeAtJob: '',
+  incomeType: '', incomeAmount: '', incomeStability: '',
+  housingType: '', monthlyBudget: '', creditScore: '', contactTime: '',
 }
 
-const VEHICLE_TYPES = [
-  { label: 'Sedan',          icon: '🚗' },
-  { label: 'SUV',            icon: '🚙' },
-  { label: 'Truck',          icon: '🛻' },
-  { label: 'Van',            icon: '🚐' },
-  { label: 'Coupe',          icon: '🏎' },
-  { label: 'Convertible',    icon: '🚘' },
-  { label: 'Electric/Hybrid',icon: '⚡' },
-  { label: 'Other',          icon: '🚖' },
-]
+// ─── Options ──────────────────────────────────────────────────────────────────
 
+const VEHICLE_TYPES  = ['Sedan','SUV','Truck','Van','Coupe','Convertible','Electric','Other']
 const VEHICLE_BRANDS = [
-  'Toyota','Honda','Ford','Chevrolet','Dodge','Hyundai','Kia','Nissan',
-  'BMW','Mercedes-Benz','Audi','Volkswagen','Mazda','Subaru','Jeep','RAM',
-  'GMC','Chrysler','Buick','Cadillac','Lincoln','Acura','Lexus','Infiniti',
-  'Volvo','Land Rover','Porsche','Tesla','Other',
+  'Toyota','Honda','Ford','Chevrolet','BMW','Mercedes','Audi','Hyundai',
+  'Kia','Nissan','Subaru','Volkswagen','Jeep','Ram','GMC','Lexus',
+  'Acura','Mazda','Volvo','Tesla','Dodge','Chrysler','Buick','Cadillac',
+  'Lincoln','Infiniti','Genesis','Rivian','Lucid','Other',
 ]
-
-const AGE_RANGES         = ['18–24','25–34','35–44','45–54','55–64','65+']
-const EMPLOYMENT_OPTIONS = ['Full-time','Part-time','Self-employed','Seasonal','Disability/EI','Retired','Student','Other']
-const INCOME_AMOUNTS     = ['Under $1,500/mo','$1,500–$2,500/mo','$2,500–$4,000/mo','$4,000–$6,000/mo','$6,000+/mo']
-const HOUSING_TYPES      = ['Own (no mortgage)','Own (with mortgage)','Renting','Living with family','Other']
-const BUDGET_OPTIONS     = ['Under $300/mo','$300–$400/mo','$400–$500/mo','$500–$700/mo','$700+/mo']
-const CREDIT_SCORES      = ['No credit history','Poor (300–579)','Fair (580–669)','Good (670–739)','Very Good (740–799)','Exceptional (800+)']
-const CONTACT_TIMES      = ['Morning (8am–12pm)','Afternoon (12pm–5pm)','Evening (5pm–9pm)','Anytime']
+const AGE_RANGES         = ['Under 25','25\u201334','35\u201344','45\u201354','55\u201364','65+']
 const PROVINCES          = ['Alberta','British Columbia','Manitoba','New Brunswick','Newfoundland and Labrador','Nova Scotia','Ontario','Prince Edward Island','Quebec','Saskatchewan','Northwest Territories','Nunavut','Yukon']
+const EMPLOYMENT_OPTIONS = ['Employed','Self-Employed','Retired','Student','Other']
+const INCOME_TYPES       = ['Salary','Hourly','Commission','Business','Pension','Disability','Other']
+const HOUSING_TYPES      = ['Own','Rent','Live with family','Other']
+const BUDGET_OPTIONS     = ['Under $300','$300\u2013$400','$400\u2013$500','$500\u2013$700','$700+']
+const CREDIT_SCORES      = ['Excellent 750+','Good 700\u2013749','Fair 650\u2013699','Poor 600\u2013649','Bad below 600','Not sure']
+const CONTACT_TIMES      = ['Morning','Afternoon','Evening','Anytime']
 
-// ─── Scene accent colours (match DriveScene) ──────────────────────────────────
+// ─── Shared UI ────────────────────────────────────────────────────────────────
 
-const ACCENT: Record<string, string> = {
-  Sedan:            '#2563EB',
-  SUV:              '#15803D',
-  Truck:            '#C2410C',
-  Van:              '#7C3AED',
-  Coupe:            '#DC2626',
-  Convertible:      '#D97706',
-  'Electric/Hybrid':'#0EA5E9',
-  Other:            '#4B5563',
-  default:          '#6366F1',
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function useIsMobile() {
-  const [m, setM] = useState(false)
-  useEffect(() => {
-    const check = () => setM(window.innerWidth < 768)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-  return m
-}
-
-// ─── Mobile background ────────────────────────────────────────────────────────
-
-const MOBILE_GRADIENTS: Record<string, string> = {
-  Sedan:            'linear-gradient(160deg,#0f172a 0%,#1e3a5f 40%,#c2410c 100%)',
-  SUV:              'linear-gradient(160deg,#052e16 0%,#166534 50%,#1e40af 100%)',
-  Truck:            'linear-gradient(160deg,#1c0700 0%,#7a2c00 45%,#f97316 100%)',
-  Van:              'linear-gradient(160deg,#1e1b4b 0%,#4c1d95 50%,#0ea5e9 100%)',
-  Coupe:            'linear-gradient(160deg,#0a0a0a 0%,#7f1d1d 50%,#dc2626 100%)',
-  Convertible:      'linear-gradient(160deg,#431407 0%,#b45309 50%,#fde68a 100%)',
-  'Electric/Hybrid':'linear-gradient(160deg,#020617 0%,#0c1445 50%,#0ea5e9 100%)',
-  Other:            'linear-gradient(160deg,#0f172a 0%,#374151 55%,#6b7280 100%)',
-  default:          'linear-gradient(160deg,#0f172a 0%,#1e293b 55%,#334155 100%)',
-}
-
-const MOBILE_SUCCESS = 'linear-gradient(160deg,#052e16 0%,#166534 45%,#86efac 100%)'
-
-function MobileBg({ vehicleType, isSuccess }: { vehicleType: string; isSuccess: boolean }) {
-  const bg = isSuccess
-    ? MOBILE_SUCCESS
-    : (MOBILE_GRADIENTS[vehicleType] || MOBILE_GRADIENTS.default)
+function StepHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="absolute inset-0 transition-all duration-[1200ms]"
-      style={{ background: bg }}
-    >
-      {/* Animated road stripes */}
-      {!isSuccess && (
-        <div className="absolute inset-0 overflow-hidden opacity-20">
-          <div className="absolute left-1/2 top-0 w-[3px] h-full bg-white"
-            style={{ animation: 'roadScroll 0.5s linear infinite', transform: 'translateX(-50%)' }} />
-          <div className="absolute left-[calc(50%-60px)] top-0 w-[3px] h-full bg-white"
-            style={{ animation: 'roadScroll 0.5s linear infinite 0.25s' }} />
-          <div className="absolute left-[calc(50%+60px)] top-0 w-[3px] h-full bg-white"
-            style={{ animation: 'roadScroll 0.5s linear infinite 0.1s' }} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Confetti ─────────────────────────────────────────────────────────────────
-
-const CONFETTI_COLORS = ['#FCD34D','#34D399','#60A5FA','#F87171','#A78BFA','#FB923C','#F472B6']
-
-function Confetti() {
-  const pieces = useRef(
-    Array.from({ length: 68 }, (_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      width: `${6 + Math.random() * 10}px`,
-      height: `${10 + Math.random() * 14}px`,
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-      delay: `${Math.random() * 2.5}s`,
-      duration: `${2.8 + Math.random() * 2}s`,
-    }))
-  ).current
-
-  return (
-    <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">
-      {pieces.map(p => (
-        <div
-          key={p.id}
-          className="absolute top-0"
-          style={{
-            left: p.left,
-            width: p.width,
-            height: p.height,
-            background: p.color,
-            animation: `confettiFall ${p.duration} ${p.delay} ease-in forwards`,
-            borderRadius: '2px',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-
-function ProgressBar({ step, accent }: { step: number; accent: string }) {
-  const pct = Math.round((step / TOTAL_STEPS) * 100)
-  return (
-    <div className="mb-4">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-xs font-medium text-white/50 tracking-widest uppercase">
-          Step {step} of {TOTAL_STEPS}
-        </span>
-        <span className="text-xs font-bold" style={{ color: accent }}>{pct}%</span>
-      </div>
-      <div className="h-[3px] rounded-full bg-white/10 overflow-hidden">
-        <motion.div
-          className="h-full rounded-full"
-          style={{ background: accent }}
-          initial={false}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        />
-      </div>
-    </div>
-  )
-}
-
-// ─── Card wrapper ─────────────────────────────────────────────────────────────
-
-const cardVariants = {
-  enter:  (d: number) => ({ x: d > 0 ? 80 : -80, opacity: 0, scale: 0.96 }),
-  center: { x: 0, opacity: 1, scale: 1 },
-  exit:   (d: number) => ({ x: d > 0 ? -80 : 80, opacity: 0, scale: 0.96 }),
-}
-
-function Card({ children, direction }: { children: React.ReactNode; direction: number }) {
-  return (
-    <motion.div
-      custom={direction}
-      variants={cardVariants}
-      initial="enter"
-      animate="center"
-      exit="exit"
-      transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
-      className="w-full"
+    <motion.h2
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight"
+      style={{ fontFamily: 'var(--font-playfair), Georgia, serif', textShadow: TEXT_SHADOW }}
     >
       {children}
-    </motion.div>
+    </motion.h2>
   )
 }
 
-// ─── Pill button ──────────────────────────────────────────────────────────────
-
-function Pill({
-  label, icon, selected, accent, onClick,
-}: { label: string; icon?: string; selected: boolean; accent: string; onClick: () => void }) {
+function PillButton({
+  label, selected, onClick, delay = 0,
+}: {
+  label: string; selected: boolean; onClick: () => void; delay?: number
+}) {
   return (
-    <button
+    <motion.button
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3, ease: 'easeOut' }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className="flex items-center gap-2 px-4 py-3 rounded-2xl border text-sm font-semibold transition-all duration-200 text-left"
-      style={{
-        background: selected ? `${accent}22` : 'rgba(255,255,255,0.07)',
-        borderColor: selected ? accent : 'rgba(255,255,255,0.15)',
-        color: selected ? '#ffffff' : 'rgba(255,255,255,0.75)',
-        boxShadow: selected ? `0 0 0 1px ${accent}, 0 4px 20px ${accent}44` : 'none',
-      }}
+      className={[
+        'px-5 py-3 rounded-full text-sm font-medium border transition-all duration-200',
+        selected
+          ? 'bg-[#F5C842] text-black border-[#F5C842] shadow-lg'
+          : 'bg-white/20 text-white border-white/30 backdrop-blur-md hover:bg-white/30',
+      ].join(' ')}
     >
-      {icon && <span className="text-lg leading-none">{icon}</span>}
-      <span>{label}</span>
-      {selected && <span className="ml-auto text-xs opacity-80">✓</span>}
-    </button>
+      {label}
+    </motion.button>
   )
 }
 
-// ─── Text input ───────────────────────────────────────────────────────────────
-
-function TextInput({
-  value, onChange, placeholder, type = 'text', accent,
-}: { value: string; onChange: (v: string) => void; placeholder: string; type?: string; accent: string }) {
+function GlassInput({
+  placeholder, value, onChange, type = 'text', delay = 0,
+}: {
+  placeholder: string; value: string; onChange: (v: string) => void; type?: string; delay?: number
+}) {
   return (
-    <input
+    <motion.input
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3 }}
       type={type}
-      value={value}
-      onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full px-5 py-4 rounded-2xl text-base font-medium placeholder-white/30 outline-none transition-all duration-200"
-      style={{
-        background: 'rgba(255,255,255,0.07)',
-        border: `1.5px solid ${value ? accent : 'rgba(255,255,255,0.15)'}`,
-        color: '#ffffff',
-        boxShadow: value ? `0 0 0 1px ${accent}55, 0 4px 20px ${accent}33` : 'none',
-      }}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3.5 text-white placeholder-white/50 focus:outline-none focus:border-[#F5C842]/80 focus:bg-white/20 transition-all text-base"
     />
   )
 }
 
-// ─── Step question wrapper ────────────────────────────────────────────────────
-
-function Q({
-  title, subtitle, children,
-}: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-bold text-white leading-tight">{title}</h2>
-        {subtitle && <p className="mt-1.5 text-sm text-white/50">{subtitle}</p>}
-      </div>
-      {children}
-    </div>
-  )
-}
-
-// ─── Individual steps ────────────────────────────────────────────────────────
-
-function Step1({ form, update, onNext }: StepProps) {
-  return (
-    <Q title="What type of vehicle are you looking for?" subtitle="Choose your ride — it sets the scene.">
-      <div className="grid grid-cols-2 gap-2.5">
-        {VEHICLE_TYPES.map(v => (
-          <Pill
-            key={v.label}
-            label={v.label}
-            icon={v.icon}
-            selected={form.vehicleType === v.label}
-            accent={ACCENT[v.label] || ACCENT.default}
-            onClick={() => { update('vehicleType', v.label); setTimeout(onNext, 260) }}
-          />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step2({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What brand are you interested in?" subtitle="Any brand — we work with all.">
-      <div className="grid grid-cols-2 gap-2">
-        {VEHICLE_BRANDS.map(b => (
-          <Pill
-            key={b}
-            label={b}
-            selected={form.vehicleBrand === b}
-            accent={accent}
-            onClick={() => { update('vehicleBrand', b); setTimeout(onNext, 220) }}
-          />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step3({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your first name?">
-      <TextInput value={form.firstName} onChange={v => update('firstName', v)} placeholder="First name" accent={accent} />
-      <NextBtn disabled={!form.firstName.trim()} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step4({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title={`Nice to meet you, ${form.firstName}! Last name?`}>
-      <TextInput value={form.lastName} onChange={v => update('lastName', v)} placeholder="Last name" accent={accent} />
-      <NextBtn disabled={!form.lastName.trim()} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step5({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your email address?" subtitle="We'll send your approval details here.">
-      <TextInput value={form.email} onChange={v => update('email', v)} placeholder="you@example.com" type="email" accent={accent} />
-      <NextBtn disabled={!form.email.includes('@')} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step6({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your phone number?" subtitle="A specialist will call you with your offer.">
-      <TextInput value={form.phone} onChange={v => update('phone', v)} placeholder="(xxx) xxx-xxxx" type="tel" accent={accent} />
-      <NextBtn disabled={form.phone.replace(/\D/g, '').length < 10} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step7({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="Are you a Canadian citizen or permanent resident?">
-      <div className="grid grid-cols-2 gap-3">
-        {['Yes','No'].map(v => (
-          <Pill key={v} label={v} selected={form.isCanadian === v} accent={accent}
-            onClick={() => { update('isCanadian', v); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step8({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="Are you interested in $0 down payment?" subtitle="We have programs for all situations.">
-      <div className="grid grid-cols-2 gap-3">
-        {['Yes, $0 down','No, I have a down payment'].map(v => (
-          <Pill key={v} label={v} selected={form.zeroDown === v} accent={accent}
-            onClick={() => { update('zeroDown', v); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step9({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your age range?">
-      <div className="grid grid-cols-3 gap-2.5">
-        {AGE_RANGES.map(a => (
-          <Pill key={a} label={a} selected={form.ageRange === a} accent={accent}
-            onClick={() => { update('ageRange', a); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step10({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your street address?">
-      <TextInput value={form.street} onChange={v => update('street', v)} placeholder="123 Main Street" accent={accent} />
-      <NextBtn disabled={!form.street.trim()} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step11({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What city do you live in?">
-      <TextInput value={form.city} onChange={v => update('city', v)} placeholder="City" accent={accent} />
-      <NextBtn disabled={!form.city.trim()} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step12({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="Which province or territory?">
-      <div className="grid grid-cols-2 gap-2">
-        {PROVINCES.map(p => (
-          <Pill key={p} label={p} selected={form.province === p} accent={accent}
-            onClick={() => { update('province', p); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step13({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your postal code?">
-      <TextInput value={form.postalCode} onChange={v => update('postalCode', v.toUpperCase())} placeholder="A1A 1A1" accent={accent} />
-      <NextBtn disabled={form.postalCode.replace(/\s/g, '').length < 6} onClick={onNext} accent={accent} />
-    </Q>
-  )
-}
-
-function Step14({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your employment status?">
-      <div className="grid grid-cols-2 gap-2.5">
-        {EMPLOYMENT_OPTIONS.map(e => (
-          <Pill key={e} label={e} selected={form.employment === e} accent={accent}
-            onClick={() => { update('employment', e); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step15({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your monthly income?" subtitle="Before taxes — all income types accepted.">
-      <div className="grid grid-cols-1 gap-2.5">
-        {INCOME_AMOUNTS.map(i => (
-          <Pill key={i} label={i} selected={form.incomeAmount === i} accent={accent}
-            onClick={() => { update('incomeAmount', i); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step16({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your current housing situation?">
-      <div className="grid grid-cols-1 gap-2.5">
-        {HOUSING_TYPES.map(h => (
-          <Pill key={h} label={h} selected={form.housingType === h} accent={accent}
-            onClick={() => { update('housingType', h); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step17({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your monthly car payment budget?">
-      <div className="grid grid-cols-1 gap-2.5">
-        {BUDGET_OPTIONS.map(b => (
-          <Pill key={b} label={b} selected={form.monthlyBudget === b} accent={accent}
-            onClick={() => { update('monthlyBudget', b); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step18({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="What's your approximate credit score?" subtitle="No credit or bad credit? No problem.">
-      <div className="grid grid-cols-1 gap-2.5">
-        {CREDIT_SCORES.map(c => (
-          <Pill key={c} label={c} selected={form.creditScore === c} accent={accent}
-            onClick={() => { update('creditScore', c); setTimeout(onNext, 220) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-function Step19({ form, update, accent, onNext }: StepProps) {
-  return (
-    <Q title="When's the best time to reach you?" subtitle="Almost there — one last question.">
-      <div className="grid grid-cols-2 gap-2.5">
-        {CONTACT_TIMES.map(t => (
-          <Pill key={t} label={t} selected={form.contactTime === t} accent={accent}
-            onClick={() => { update('contactTime', t); setTimeout(onNext, 260) }} />
-        ))}
-      </div>
-    </Q>
-  )
-}
-
-// ─── Next button ──────────────────────────────────────────────────────────────
-
-function NextBtn({ onClick, disabled, accent }: { onClick: () => void; disabled: boolean; accent: string }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all duration-200 mt-1"
-      style={{
-        background: disabled ? 'rgba(255,255,255,0.08)' : accent,
-        color: disabled ? 'rgba(255,255,255,0.3)' : '#ffffff',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: disabled ? 'none' : `0 4px 24px ${accent}66`,
-      }}
-    >
-      Continue →
-    </button>
-  )
-}
-
-// ─── Step props type ──────────────────────────────────────────────────────────
-
-interface StepProps {
-  form: FormData
-  update: (field: keyof FormData, value: string) => void
-  accent: string
-  onNext: () => void
-}
-
-// ─── Success screen ───────────────────────────────────────────────────────────
-
-function SuccessScreen({ form }: { form: FormData }) {
+function GlassSelect({
+  placeholder, value, onChange, options, delay = 0,
+}: {
+  placeholder: string; value: string; onChange: (v: string) => void; options: string[]; delay?: number
+}) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="flex flex-col items-center justify-center text-center px-6 py-12 space-y-6"
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3 }}
+      className="relative w-full"
     >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-        className="w-24 h-24 rounded-full flex items-center justify-center text-5xl"
-        style={{ background: 'rgba(16,185,129,0.2)', border: '2px solid #10B981' }}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#F5C842]/80 transition-all text-base appearance-none cursor-pointer"
+        style={{ colorScheme: 'dark' }}
       >
-        🏠
-      </motion.div>
-      <div>
-        <h2 className="text-3xl font-black text-white leading-tight">
-          You're Pre-Approved,<br />
-          <span style={{ color: '#34D399' }}>{form.firstName}!</span>
-        </h2>
-        <p className="mt-3 text-white/60 text-sm max-w-xs mx-auto">
-          A specialist will call you at your preferred time to confirm your{' '}
-          <strong className="text-white">{form.vehicleType || 'vehicle'}</strong> loan details.
-        </p>
-      </div>
-      <div className="w-full max-w-xs rounded-2xl p-4 space-y-2.5"
-        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
-        {[
-          ['Contact', form.phone || form.email],
-          ['Province', form.province],
-          ['Credit', form.creditScore],
-          ['Budget', form.monthlyBudget],
-        ].filter(([, v]) => v).map(([label, value]) => (
-          <div key={label} className="flex justify-between text-sm">
-            <span className="text-white/40">{label}</span>
-            <span className="text-white font-medium">{value}</span>
-          </div>
+        <option value="" disabled style={{ background: '#1a1208' }}>{placeholder}</option>
+        {options.map((o) => (
+          <option key={o} value={o} style={{ background: '#1a1208' }}>{o}</option>
         ))}
+      </select>
+      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/60 text-xs">
+        &#9662;
       </div>
-      <div className="flex gap-3 text-xs text-white/35">
-        <span>🔒 256-bit encrypted</span>
-        <span>•</span>
-        <span>30+ Canadian lenders</span>
-      </div>
-      <motion.div
-        animate={{ scale: [1, 1.04, 1] }}
-        transition={{ repeat: Infinity, duration: 2.5 }}
-        className="px-8 py-4 rounded-2xl font-bold text-sm"
-        style={{ background: '#10B981', color: '#fff', boxShadow: '0 4px 24px #10B98155' }}
-      >
-        ✅ Application Submitted
-      </motion.div>
     </motion.div>
   )
 }
 
-// ─── Main funnel ──────────────────────────────────────────────────────────────
+function NextButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.35 }}
+      whileHover={!disabled ? { scale: 1.04, boxShadow: '0 8px 32px rgba(245,200,66,0.4)' } : {}}
+      whileTap={!disabled ? { scale: 0.97 } : {}}
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        'mt-7 px-9 py-3.5 rounded-full font-semibold text-base transition-all',
+        disabled
+          ? 'bg-white/10 text-white/35 cursor-not-allowed border border-white/15'
+          : 'bg-[#F5C842] text-black shadow-xl',
+      ].join(' ')}
+    >
+      Continue &#8594;
+    </motion.button>
+  )
+}
 
-export default function AutoLoansFunnel() {
-  const [step, setStep]       = useState(1)
-  const [dir, setDir]         = useState(1)
-  const [form, setForm]       = useState<FormData>(EMPTY_FORM)
-  const [showSuccess, setShowSuccess] = useState(false)
-  const isMobile = useIsMobile()
+// ─── Step Components ──────────────────────────────────────────────────────────
 
-  const accent = ACCENT[form.vehicleType] || ACCENT.default
+function Step0({ onNext }: { onNext: () => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-xl mx-auto">
+      <motion.p
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="text-[#F5C842] text-sm font-semibold tracking-widest uppercase mb-3"
+        style={{ textShadow: TEXT_SHADOW }}
+      >
+        $0 Down Options Available
+      </motion.p>
+      <motion.h1
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight mb-4"
+        style={{ fontFamily: 'var(--font-playfair), Georgia, serif', textShadow: TEXT_SHADOW }}
+      >
+        Get Approved For a Vehicle
+      </motion.h1>
+      <motion.p
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.32 }}
+        className="text-white/90 text-lg sm:text-xl mb-8"
+        style={{ textShadow: TEXT_SHADOW }}
+      >
+        No Matter Your Credit or Situation
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.44 }}
+        className="flex flex-wrap justify-center gap-2 mb-9"
+      >
+        {['Bad Credit','No Credit','Bankruptcy','Collections'].map((t) => (
+          <span
+            key={t}
+            className="bg-white/15 backdrop-blur-sm border border-white/25 text-white/90 text-xs px-3 py-1.5 rounded-full"
+          >
+            &#10003; {t}
+          </span>
+        ))}
+      </motion.div>
+      <motion.button
+        initial={{ opacity: 0, scale: 0.88 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.58, type: 'spring', stiffness: 200 }}
+        whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(245,200,66,0.5)' }}
+        whileTap={{ scale: 0.97 }}
+        onClick={onNext}
+        className="bg-[#F5C842] text-black font-bold text-lg px-10 py-4 rounded-full shadow-2xl"
+      >
+        Begin My Journey &#8594;
+      </motion.button>
+    </div>
+  )
+}
 
-  const update = useCallback((field: keyof FormData, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }))
-  }, [])
+function Step1({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>What type of vehicle are you looking for?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {VEHICLE_TYPES.map((t, i) => (
+          <PillButton key={t} label={t} selected={value === t} onClick={() => onSelect(t)} delay={i * 0.06} />
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  const next = useCallback(() => {
-    if (step >= TOTAL_STEPS) {
-      setShowSuccess(true)
-    } else {
-      setDir(1)
-      setStep(s => s + 1)
-    }
-  }, [step])
+function Step2({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-2xl mx-auto">
+      <StepHeading>Which brand catches your eye?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-2 mt-7 max-h-64 overflow-y-auto px-2 pb-2">
+        {VEHICLE_BRANDS.map((b, i) => (
+          <PillButton key={b} label={b} selected={value === b} onClick={() => onSelect(b)} delay={Math.min(i * 0.025, 0.4)} />
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  const back = useCallback(() => {
-    if (step > 1) {
-      setDir(-1)
-      setStep(s => s - 1)
-    }
-  }, [step])
+function Step3({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
+      <StepHeading>What&apos;s your name?</StepHeading>
+      <div className="flex flex-col gap-4 mt-7 w-full">
+        <GlassInput placeholder="First name" value={form.firstName} onChange={(v) => onChange('firstName', v)} delay={0.12} />
+        <GlassInput placeholder="Last name"  value={form.lastName}  onChange={(v) => onChange('lastName',  v)} delay={0.22} />
+      </div>
+    </div>
+  )
+}
 
-  const stepProps: StepProps = { form, update, accent, onNext: next }
+function Step4({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
+      <StepHeading>What&apos;s your email address?</StepHeading>
+      <div className="mt-7 w-full">
+        <GlassInput placeholder="your@email.com" value={value} onChange={onChange} type="email" delay={0.12} />
+      </div>
+    </div>
+  )
+}
 
-  const STEPS: ((props: StepProps) => React.ReactElement)[] = [
-    Step1, Step2, Step3, Step4, Step5, Step6, Step7,
-    Step8, Step9, Step10, Step11, Step12, Step13,
-    Step14, Step15, Step16, Step17, Step18, Step19,
+function Step5({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
+      <StepHeading>What&apos;s your phone number?</StepHeading>
+      <div className="mt-7 w-full">
+        <GlassInput placeholder="(555) 123-4567" value={value} onChange={onChange} type="tel" delay={0.12} />
+      </div>
+    </div>
+  )
+}
+
+function Step6({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto">
+      <StepHeading>Are you a Canadian resident?</StepHeading>
+      <div className="flex gap-4 mt-7">
+        {['Yes','No'].map((v, i) => (
+          <PillButton key={v} label={v} selected={value === v} onClick={() => onSelect(v)} delay={i * 0.1} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step7({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto">
+      <StepHeading>Do you have a down payment?</StepHeading>
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.22 }}
+        className="text-white/65 text-sm mt-2"
+        style={{ textShadow: TEXT_SHADOW }}
+      >
+        $0 down options available
+      </motion.p>
+      <div className="flex gap-4 mt-6">
+        {['Yes','No'].map((v, i) => (
+          <PillButton key={v} label={v} selected={value === v} onClick={() => onSelect(v)} delay={i * 0.1} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step8({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>What&apos;s your age range?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {AGE_RANGES.map((a, i) => (
+          <PillButton key={a} label={a} selected={value === a} onClick={() => onSelect(a)} delay={i * 0.07} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step9({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
+      <StepHeading>What&apos;s your address?</StepHeading>
+      <div className="flex flex-col gap-4 mt-7 w-full">
+        <GlassInput placeholder="Street address"              value={form.street}     onChange={(v) => onChange('street',     v)} delay={0.10} />
+        <GlassInput placeholder="City"                        value={form.city}       onChange={(v) => onChange('city',       v)} delay={0.16} />
+        <GlassSelect placeholder="Select province..."          value={form.province}   onChange={(v) => onChange('province',   v)} options={PROVINCES} delay={0.22} />
+        <GlassInput placeholder="Postal code (e.g. A1B 2C3)"  value={form.postalCode} onChange={(v) => onChange('postalCode', v)} delay={0.28} />
+      </div>
+    </div>
+  )
+}
+
+function Step10({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>What&apos;s your employment status?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {EMPLOYMENT_OPTIONS.map((e, i) => (
+          <PillButton key={e} label={e} selected={value === e} onClick={() => onSelect(e)} delay={i * 0.07} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step11({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
+      <StepHeading>Tell us about your work</StepHeading>
+      <div className="flex flex-col gap-4 mt-7 w-full">
+        <GlassInput placeholder="Employer name"                    value={form.employerName} onChange={(v) => onChange('employerName', v)} delay={0.10} />
+        <GlassInput placeholder="Job title"                        value={form.jobTitle}     onChange={(v) => onChange('jobTitle',     v)} delay={0.17} />
+        <GlassInput placeholder="Time at this job (e.g. 2 years)"  value={form.timeAtJob}    onChange={(v) => onChange('timeAtJob',    v)} delay={0.24} />
+      </div>
+    </div>
+  )
+}
+
+function Step12({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>What type of income do you receive?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {INCOME_TYPES.map((t, i) => (
+          <PillButton key={t} label={t} selected={value === t} onClick={() => onSelect(t)} delay={i * 0.07} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step13({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
+      <StepHeading>Tell us about your income</StepHeading>
+      <div className="flex flex-col gap-4 mt-7 w-full">
+        <GlassInput placeholder="Monthly amount (e.g. $3,500)"       value={form.incomeAmount}    onChange={(v) => onChange('incomeAmount',    v)} delay={0.12} />
+        <GlassInput placeholder="How long have you had this income?"  value={form.incomeStability} onChange={(v) => onChange('incomeStability', v)} delay={0.22} />
+      </div>
+    </div>
+  )
+}
+
+function Step14({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>What&apos;s your housing situation?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {HOUSING_TYPES.map((h, i) => (
+          <PillButton key={h} label={h} selected={value === h} onClick={() => onSelect(h)} delay={i * 0.08} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step15({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>What&apos;s your monthly car budget?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {BUDGET_OPTIONS.map((b, i) => (
+          <PillButton key={b} label={b} selected={value === b} onClick={() => onSelect(b)} delay={i * 0.08} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step16({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>How would you rate your credit?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {CREDIT_SCORES.map((c, i) => (
+          <PillButton key={c} label={c} selected={value === c} onClick={() => onSelect(c)} delay={i * 0.08} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step17({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <StepHeading>When&apos;s the best time to reach you?</StepHeading>
+      <div className="flex flex-wrap justify-center gap-3 mt-7">
+        {CONTACT_TIMES.map((t, i) => (
+          <PillButton key={t} label={t} selected={value === t} onClick={() => onSelect(t)} delay={i * 0.1} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Step18({ form }: { form: FormData }) {
+  const confetti = useMemo(() =>
+    Array.from({ length: 64 }, (_, i) => ({
+      id:       i,
+      left:     (i * 7.3)   % 100,
+      delay:    (i * 0.127) % 3,
+      color:    (['#F5C842','#FFF7DC','#FFD700','#FFFACD','#FFF0A0','#ffffff'] as const)[i % 6],
+      width:    5 + (i % 7),
+      height:   3 + (i % 4),
+      duration: 2.4 + (i % 3) * 0.6,
+    }))
+  , [])
+
+  const summaryRows: [string, string][] = [
+    ['Name',    `${form.firstName} ${form.lastName}`.trim()],
+    ['Vehicle', [form.vehicleType, form.vehicleBrand].filter(Boolean).join(' \u2014 ')],
+    ['Credit',  form.creditScore],
+    ['Budget',  form.monthlyBudget ? `${form.monthlyBudget}/mo` : ''],
+    ['Contact', [form.contactTime, form.phone].filter(Boolean).join(' \u00b7 ')],
   ]
 
-  const StepComponent = STEPS[step - 1]
+  return (
+    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-30">
+        {confetti.map((c) => (
+          <div
+            key={c.id}
+            className="absolute rounded-sm"
+            style={{
+              left:            `${c.left}%`,
+              top:             '-12px',
+              width:           c.width,
+              height:          c.height,
+              backgroundColor: c.color,
+              animation:       `confettiFall ${c.duration}s ease-in ${c.delay}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+
+      <motion.div
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 240, delay: 0.1 }}
+        className="text-6xl mb-4 select-none"
+      >
+        &#127881;
+      </motion.div>
+
+      <motion.h2
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="text-4xl sm:text-5xl font-bold text-white mb-2"
+        style={{ fontFamily: 'var(--font-playfair), Georgia, serif', textShadow: TEXT_SHADOW }}
+      >
+        You&apos;re Pre-Approved!
+      </motion.h2>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="text-[#F5C842] text-base mb-7"
+        style={{ textShadow: TEXT_SHADOW }}
+      >
+        A specialist will contact you shortly
+      </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.62 }}
+        className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-2xl p-6 w-full text-left space-y-3"
+        style={{ boxShadow: CARD_SHADOW }}
+      >
+        <p className="text-[#F5C842] font-semibold text-xs uppercase tracking-widest mb-3">
+          Application Summary
+        </p>
+        {summaryRows.filter(([, v]) => v).map(([label, val]) => (
+          <div key={label} className="flex justify-between gap-4 text-sm">
+            <span className="text-white/55">{label}</span>
+            <span className="text-white font-medium text-right">{val}</span>
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  )
+}
+
+// ─── Main Funnel ──────────────────────────────────────────────────────────────
+
+export default function FunnelPage() {
+  const [step, setStep] = useState(0)
+  const [form, setForm] = useState<FormData>(EMPTY_FORM)
+  const videoRef        = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    const video  = videoRef.current
+    if (!video) return
+    const target = TIMESTAMPS[step]
+    const doSeek = () => { video.currentTime = target }
+    if (video.readyState >= 2) {
+      doSeek()
+    } else {
+      video.addEventListener('canplay', doSeek, { once: true })
+    }
+    return () => video.removeEventListener('canplay', doSeek)
+  }, [step])
+
+  const next = useCallback(() => setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1)), [])
+  const back = useCallback(() => setStep((s) => Math.max(s - 1, 0)), [])
+
+  const setField = useCallback((key: keyof FormData, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }))
+  }, [])
+
+  const selectAndNext = useCallback((key: keyof FormData, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }))
+    setTimeout(next, 190)
+  }, [next])
+
+  const isTextStep = [3, 4, 5, 9, 11, 13].includes(step)
+
+  const canContinue = (): boolean => {
+    switch (step) {
+      case  3: return !!(form.firstName.trim() && form.lastName.trim())
+      case  4: return !!form.email.trim()
+      case  5: return !!form.phone.trim()
+      case  9: return !!(form.street.trim() && form.city.trim() && form.province)
+      case 11: return !!form.employerName.trim()
+      case 13: return !!form.incomeAmount.trim()
+      default: return true
+    }
+  }
+
+  const renderStep = () => {
+    switch (step) {
+      case  0: return <Step0  onNext={next} />
+      case  1: return <Step1  value={form.vehicleType}   onSelect={(v) => selectAndNext('vehicleType',   v)} />
+      case  2: return <Step2  value={form.vehicleBrand}  onSelect={(v) => selectAndNext('vehicleBrand',  v)} />
+      case  3: return <Step3  form={form} onChange={setField} />
+      case  4: return <Step4  value={form.email}         onChange={(v) => setField('email',         v)} />
+      case  5: return <Step5  value={form.phone}         onChange={(v) => setField('phone',         v)} />
+      case  6: return <Step6  value={form.isCanadian}    onSelect={(v) => selectAndNext('isCanadian',    v)} />
+      case  7: return <Step7  value={form.zeroDown}      onSelect={(v) => selectAndNext('zeroDown',      v)} />
+      case  8: return <Step8  value={form.ageRange}      onSelect={(v) => selectAndNext('ageRange',      v)} />
+      case  9: return <Step9  form={form} onChange={setField} />
+      case 10: return <Step10 value={form.employment}    onSelect={(v) => selectAndNext('employment',    v)} />
+      case 11: return <Step11 form={form} onChange={setField} />
+      case 12: return <Step12 value={form.incomeType}    onSelect={(v) => selectAndNext('incomeType',    v)} />
+      case 13: return <Step13 form={form} onChange={setField} />
+      case 14: return <Step14 value={form.housingType}   onSelect={(v) => selectAndNext('housingType',   v)} />
+      case 15: return <Step15 value={form.monthlyBudget} onSelect={(v) => selectAndNext('monthlyBudget', v)} />
+      case 16: return <Step16 value={form.creditScore}   onSelect={(v) => selectAndNext('creditScore',   v)} />
+      case 17: return <Step17 value={form.contactTime}   onSelect={(v) => selectAndNext('contactTime',   v)} />
+      case 18: return <Step18 form={form} />
+      default: return null
+    }
+  }
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ background: '#0a0a0f' }}>
-      {/* ── Scene layer ── */}
-      {isMobile
-        ? <MobileBg vehicleType={form.vehicleType} isSuccess={showSuccess} />
-        : <DriveScene vehicleType={form.vehicleType} step={step} isSuccess={showSuccess} />
-      }
+    <main className="relative w-full h-screen overflow-hidden">
 
-      {/* ── Gradient overlay so cards are readable ── */}
+      {/* Full-screen background video */}
+      <video
+        ref={videoRef}
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        src="/videos/sedan.mp4"
+      />
+
+      {/* Warm golden-hour overlay */}
       <div
-        className="absolute inset-0 pointer-events-none"
+        className="absolute inset-0"
         style={{
-          background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.05) 100%)',
+          background: 'linear-gradient(to bottom, rgba(20,10,0,0.28) 0%, rgba(10,5,0,0.10) 40%, rgba(20,10,0,0.44) 100%)',
         }}
       />
 
-      {/* ── Confetti ── */}
-      {showSuccess && <Confetti />}
-
-      {/* ── Logo ── */}
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
-        <span
-          className="text-lg font-black tracking-tight"
-          style={{ color: accent, textShadow: `0 0 20px ${accent}88` }}
-        >
-          autoloans<span className="text-white">.ca</span>
-        </span>
-      </div>
-
-      {/* ── Trust badge ── */}
-      <div className="absolute top-4 right-4 z-30 hidden sm:flex items-center gap-1.5 text-xs text-white/40">
-        <span>🔒</span>
-        <span>256-bit SSL</span>
-      </div>
-
-      {/* ── Main panel ── */}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center pb-6 px-4 pt-2">
-        <div className="w-full max-w-lg">
-          {!showSuccess ? (
-            <>
-              <ProgressBar step={step} accent={accent} />
-              <div
-                className="rounded-3xl p-6 overflow-y-auto"
-                style={{
-                  background: 'rgba(10,10,15,0.72)',
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  maxHeight: 'calc(100dvh - 100px)',
-                  boxShadow: `0 0 0 1px rgba(255,255,255,0.05), 0 24px 48px rgba(0,0,0,0.6), 0 0 60px ${accent}22`,
-                }}
-              >
-                {/* Step content */}
-                <AnimatePresence mode="wait" custom={dir}>
-                  <Card key={step} direction={dir}>
-                    <StepComponent {...stepProps} />
-                  </Card>
-                </AnimatePresence>
-
-                {/* Back button */}
-                {step > 1 && (
-                  <button
-                    onClick={back}
-                    className="mt-5 w-full py-2.5 rounded-xl text-sm text-white/35 hover:text-white/60 transition-colors"
-                  >
-                    ← Back
-                  </button>
-                )}
-              </div>
-            </>
-          ) : (
-            <div
-              className="rounded-3xl overflow-y-auto"
-              style={{
-                background: 'rgba(10,10,15,0.82)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                border: '1px solid rgba(16,185,129,0.3)',
-                maxHeight: 'calc(100dvh - 80px)',
-                boxShadow: '0 24px 48px rgba(0,0,0,0.7), 0 0 60px rgba(16,185,129,0.2)',
-              }}
-            >
-              <SuccessScreen form={form} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Bottom trust strip ── */}
-      {!showSuccess && (
-        <div className="absolute bottom-0 left-0 right-0 z-10 flex justify-center gap-5 pb-2 text-[10px] text-white/20 pointer-events-none">
-          <span>99% Approval Rate</span>
-          <span>·</span>
-          <span>30+ Lenders</span>
-          <span>·</span>
-          <span>All Provinces</span>
+      {/* Gold progress bar */}
+      {step > 0 && step < 18 && (
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/10 z-20">
+          <motion.div
+            className="h-full bg-[#F5C842]"
+            animate={{ width: `${(step / 17) * 100}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            style={{ boxShadow: '0 0 8px rgba(245,200,66,0.6)' }}
+          />
         </div>
       )}
-    </div>
+
+      {/* Back button */}
+      {step > 0 && step < 18 && (
+        <button
+          onClick={back}
+          className="absolute top-5 left-4 z-20 text-white/65 hover:text-white text-xs flex items-center gap-1 transition-colors bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20"
+        >
+          &#8592; Back
+        </button>
+      )}
+
+      {/* Step counter */}
+      {step > 0 && step < 18 && (
+        <div className="absolute top-5 right-4 z-20 text-white/50 text-xs bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20">
+          {step} / 17
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="absolute inset-0 flex items-center justify-center z-10 px-4 py-20">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 44 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -32 }}
+            transition={{ duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="w-full flex flex-col items-center"
+          >
+            {renderStep()}
+            {isTextStep && (
+              <NextButton onClick={next} disabled={!canContinue()} />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+    </main>
   )
 }
