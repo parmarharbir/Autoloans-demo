@@ -1,0 +1,9 @@
+{
+  "sedan": "/videos/sedan.mp4",
+  "suv": "/videos/suv.mp4",
+  "truck": "/videos/truck.mp4",
+  "van": "/videos/van.mp4",
+  "coupe": "/videos/coupe.mp4",
+  "electric": "/videos/electric.mp4",
+  "other": "/videos/other.mp4"
+}
