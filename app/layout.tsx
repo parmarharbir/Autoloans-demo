@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AutoLoans.ca — Bad Credit Car Loans Approved in Canada",
+  title: "AutoLoans.ca — Get Pre-Approved for a Car Loan in Canada",
   description:
     "Get approved for a car loan today. Bad credit, no credit, or bankruptcy — we work with 30+ lenders to get you behind the wheel. Fast approvals across all Canadian provinces.",
 };
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col text-white overflow-x-hidden">
+      <body className="min-h-full flex flex-col overflow-x-hidden bg-[#FEFCF8] text-slate-900">
         {children}
       </body>
     </html>
