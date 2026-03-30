@@ -558,6 +558,44 @@ function Step18({ form }: { form: FormData }) {
   )
 }
 
+// ─── Step position map ────────────────────────────────────────────────────────
+
+interface StepLayout {
+  css: React.CSSProperties
+  x?: string
+  fullOverlay?: boolean
+}
+
+const _TL: StepLayout = { css: { top: '10%',    left:   '8%' } }
+const _TR: StepLayout = { css: { top: '10%',    right:  '8%' } }
+const _BL: StepLayout = { css: { bottom: '15%', left:   '8%' } }
+const _BR: StepLayout = { css: { bottom: '15%', right:  '8%' } }
+const _TC: StepLayout = { css: { top: '10%',    left: '50%' }, x: '-50%' }
+const _BC: StepLayout = { css: { bottom: '15%', left: '50%' }, x: '-50%' }
+const _FO: StepLayout = { css: {}, fullOverlay: true }
+
+const STEP_LAYOUTS: StepLayout[] = [
+  _FO, // 0  hero
+  _TL, // 1
+  _TR, // 2
+  _BL, // 3
+  _BR, // 4
+  _TC, // 5
+  _BC, // 6
+  _TL, // 7
+  _TR, // 8
+  _BL, // 9
+  _BR, // 10
+  _TL, // 11
+  _TR, // 12
+  _BL, // 13
+  _BR, // 14
+  _TC, // 15
+  _BC, // 16
+  _TL, // 17
+  _FO, // 18 success
+]
+
 // ─── Main Funnel ──────────────────────────────────────────────────────────────
 
 export default function FunnelPage() {
@@ -629,31 +667,41 @@ export default function FunnelPage() {
     }
   }
 
+  const layout = STEP_LAYOUTS[step]
+
+  const motionStyle: React.CSSProperties = layout.fullOverlay
+    ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }
+    : { position: 'fixed', zIndex: 10, maxWidth: '420px', width: 'calc(100% - 2rem)', ...layout.css }
+
+  const motionBase = { opacity: 0, y: 44, ...(layout.x ? { x: layout.x } : {}) }
+  const motionShow = { opacity: 1, y: 0,  ...(layout.x ? { x: layout.x } : {}) }
+  const motionHide = { opacity: 0, y: -32, ...(layout.x ? { x: layout.x } : {}) }
+
   return (
     <main className="relative w-full h-screen overflow-hidden">
 
-      {/* Full-screen background video */}
+      {/* Video — never unmounted, always rendered, position:fixed z-0 */}
       <video
         ref={videoRef}
         autoPlay
         loop
         muted
         playsInline
-        className="absolute inset-0 w-full h-full object-cover"
+        style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
         src="/videos/sedan.mp4"
       />
 
       {/* Warm golden-hour overlay */}
       <div
-        className="absolute inset-0"
         style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1,
           background: 'linear-gradient(to bottom, rgba(20,10,0,0.28) 0%, rgba(10,5,0,0.10) 40%, rgba(20,10,0,0.44) 100%)',
         }}
       />
 
       {/* Gold progress bar */}
       {step > 0 && step < 18 && (
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/10 z-20">
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 20, background: 'rgba(255,255,255,0.1)' }}>
           <motion.div
             className="h-full bg-[#F5C842]"
             animate={{ width: `${(step / 17) * 100}%` }}
@@ -667,7 +715,8 @@ export default function FunnelPage() {
       {step > 0 && step < 18 && (
         <button
           onClick={back}
-          className="absolute top-5 left-4 z-20 text-white/65 hover:text-white text-xs flex items-center gap-1 transition-colors bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20"
+          style={{ position: 'fixed', top: '1.25rem', left: '1rem', zIndex: 20 }}
+          className="text-white/65 hover:text-white text-xs flex items-center gap-1 transition-colors bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20"
         >
           &#8592; Back
         </button>
@@ -675,29 +724,44 @@ export default function FunnelPage() {
 
       {/* Step counter */}
       {step > 0 && step < 18 && (
-        <div className="absolute top-5 right-4 z-20 text-white/50 text-xs bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20">
+        <div
+          style={{ position: 'fixed', top: '1.25rem', right: '1rem', zIndex: 20 }}
+          className="text-white/50 text-xs bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20"
+        >
           {step} / 17
         </div>
       )}
 
-      {/* Content */}
-      <div className="absolute inset-0 flex items-center justify-center z-10 px-4 py-20">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, y: 44 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -32 }}
-            transition={{ duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="w-full flex flex-col items-center"
-          >
-            {renderStep()}
-            {isTextStep && (
-              <NextButton onClick={next} disabled={!canContinue()} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      {/* Floating step content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={motionBase}
+          animate={motionShow}
+          exit={motionHide}
+          transition={{ duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] }}
+          style={motionStyle}
+        >
+          {layout.fullOverlay ? (
+            <div
+              className="w-full h-full flex flex-col items-center justify-center"
+              style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.45) 100%)' }}
+            >
+              {renderStep()}
+            </div>
+          ) : (
+            <div
+              className="backdrop-blur-sm rounded-2xl p-5 w-full flex flex-col items-center"
+              style={{ background: 'rgba(0,0,0,0.15)' }}
+            >
+              {renderStep()}
+              {isTextStep && (
+                <NextButton onClick={next} disabled={!canContinue()} />
+              )}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
     </main>
   )
