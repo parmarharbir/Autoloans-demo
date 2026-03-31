@@ -196,7 +196,7 @@ function ContBtn({ onClick, disabled }: { onClick: () => void; disabled?: boolea
 }
 
 /* ======================================================
-   3D SCENE — FERRARI + ENVIRONMENT
+   3D SCENE — DRIVING SCENE
 ====================================================== */
 
 function FerrariModel() {
@@ -213,30 +213,78 @@ function FerrariModel() {
       if (!(child instanceof THREE.Mesh)) return
       child.castShadow = true
       child.receiveShadow = true
-      // Apply red to body parts; keep glass transparent
       if (child.name === 'body') {
         child.material = bodyMat
       }
     })
   }, [scene, bodyMat])
 
-  // Continuous auto-rotation
   const groupRef = useRef<THREE.Group>(null)
   useFrame((_state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.25
+      groupRef.current.rotation.y += delta * 0.3
     }
   })
 
   return (
-    <group ref={groupRef} position={[0, -0.5, 0]}>
+    <group ref={groupRef} position={[0, 0, 0]}>
       <primitive object={scene} scale={1.4} />
     </group>
   )
 }
 
-// Preload for fast load
 useGLTF.preload('https://threejs.org/examples/models/gltf/ferrari.glb')
+
+function BackgroundPlane() {
+  const bgTexture = useTexture('/images/highway-bg.png')
+  return (
+    <mesh position={[0, 2, -10]}>
+      <planeGeometry args={[40, 20]} />
+      <meshBasicMaterial map={bgTexture} />
+    </mesh>
+  )
+}
+
+function RoadPlane() {
+  const roadTexture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 512
+    const ctx = canvas.getContext('2d')!
+    // Asphalt base
+    ctx.fillStyle = '#2a2a2a'
+    ctx.fillRect(0, 0, 256, 512)
+    // Lane markings - dashed center line
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(120, 0, 16, 512)
+    // Dashed edge lines
+    for (let y = 0; y < 512; y += 60) {
+      ctx.fillRect(20, y, 8, 40)
+      ctx.fillRect(228, y, 8, 40)
+    }
+    // Make center line dashed
+    ctx.fillStyle = '#2a2a2a'
+    for (let y = 0; y < 512; y += 60) {
+      ctx.fillRect(120, y + 40, 16, 20)
+    }
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.wrapS = THREE.RepeatWrapping
+    tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(1, 4)
+    return tex
+  }, [])
+
+  useFrame((_state, delta) => {
+    roadTexture.offset.y -= delta * 0.8
+  })
+
+  return (
+    <mesh position={[0, -0.51, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[8, 40]} />
+      <meshStandardMaterial map={roadTexture} roughness={0.9} metalness={0.0} />
+    </mesh>
+  )
+}
 
 interface CameraRigProps {
   camTarget: React.MutableRefObject<THREE.Vector3>
@@ -254,16 +302,6 @@ function CameraRig({ camTarget }: CameraRigProps) {
   return null
 }
 
-function HighwayBackground() {
-  const texture = useTexture('/images/highway-bg.png')
-  return (
-    <mesh position={[0, 0, -8]} rotation={[0, 0, 0]}>
-      <planeGeometry args={[30, 20]} />
-      <meshBasicMaterial map={texture} />
-    </mesh>
-  )
-}
-
 interface Scene3DProps {
   camTarget: React.MutableRefObject<THREE.Vector3>
 }
@@ -271,21 +309,24 @@ interface Scene3DProps {
 function Scene3D({ camTarget }: Scene3DProps) {
   return (
     <>
-      <ambientLight intensity={0.8} color='#FFF3E0' />
-      <directionalLight position={[10, 8, 5]} intensity={2} color='#FFB347' castShadow />
-      <directionalLight position={[-5, 3, -5]} intensity={0.4} color='#87CEEB' />
+      <fog attach='fog' args={['#f8e8c0', 20, 60]} />
+
+      <ambientLight intensity={1.0} color='#FFF3E0' />
+      <directionalLight position={[8, 10, 5]} intensity={2.5} color='#FFB347' castShadow />
+      <directionalLight position={[-8, 5, -5]} intensity={0.5} color='#87CEEB' />
+      <pointLight position={[0, 5, 0]} intensity={0.8} color='#ffffff' />
 
       <Suspense fallback={null}>
-        <HighwayBackground />
+        <BackgroundPlane />
+        <RoadPlane />
         <FerrariModel />
       </Suspense>
 
       <ContactShadows
-        position={[0, -0.49, 0]}
-        opacity={0.8}
-        blur={2.5}
-        far={4}
-        resolution={512}
+        position={[0, -0.5, 0]}
+        opacity={0.7}
+        blur={3}
+        far={5}
       />
 
       <CameraRig camTarget={camTarget} />
