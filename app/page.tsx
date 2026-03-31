@@ -11,9 +11,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 gsap.registerPlugin(ScrollTrigger)
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    TYPES
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 interface FormData {
   vehicleType: string; vehicleBrand: string
@@ -28,9 +28,9 @@ interface FormData {
 
 type QPos = 'center' | 'left' | 'right' | 'bot-left' | 'bot-right' | 'top-left' | 'top-right' | 'top' | 'bottom'
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    CONSTANTS
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 const EMPTY: FormData = {
   vehicleType: '', vehicleBrand: '', firstName: '', lastName: '',
@@ -85,9 +85,9 @@ const TOTAL_STEPS = 19
 const PX_PER_STEP = 300
 const TOTAL_HEIGHT = TOTAL_STEPS * PX_PER_STEP
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    POSITION HELPER
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function cardContainer(pos: QPos, mobile: boolean): React.CSSProperties {
   const base: React.CSSProperties = {
@@ -114,9 +114,9 @@ function cardContainer(pos: QPos, mobile: boolean): React.CSSProperties {
   }
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    SHARED MICRO-COMPONENTS
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function QH({ children }: { children: React.ReactNode }) {
   return (
@@ -195,9 +195,9 @@ function ContBtn({ onClick, disabled }: { onClick: () => void; disabled?: boolea
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    3D SCENE — FERRARI + ENVIRONMENT
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function FerrariModel() {
   const { scene } = useGLTF('https://threejs.org/examples/models/gltf/ferrari.glb')
@@ -220,11 +220,11 @@ function FerrariModel() {
     })
   }, [scene, bodyMat])
 
-  // Slow idle rotation
+  // Continuous auto-rotation
   const groupRef = useRef<THREE.Group>(null)
-  useFrame(({ clock }) => {
+  useFrame((_state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(clock.getElapsedTime() * 0.12) * 0.08
+      groupRef.current.rotation.y += delta * 0.3
     }
   })
 
@@ -254,6 +254,18 @@ function CameraRig({ camTarget }: CameraRigProps) {
   return null
 }
 
+function SceneBackground() {
+  const { scene } = useThree()
+  useEffect(() => {
+    const loader = new THREE.TextureLoader()
+    loader.load('/images/highway-bg.png', (texture) => {
+      scene.background = texture
+    })
+    return () => { scene.background = null }
+  }, [scene])
+  return null
+}
+
 interface Scene3DProps {
   camTarget: React.MutableRefObject<THREE.Vector3>
 }
@@ -261,8 +273,8 @@ interface Scene3DProps {
 function Scene3D({ camTarget }: Scene3DProps) {
   return (
     <>
-      <fog attach="fog" args={['#FFF8F0', 15, 40]} />
-      <color attach="background" args={['#FFF8F0']} />
+      <SceneBackground />
+      <fog attach="fog" args={['#c8a87a', 20, 50]} />
 
       <Environment preset="sunset" />
 
@@ -288,9 +300,9 @@ function Scene3D({ camTarget }: Scene3DProps) {
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    PROGRESS BAR
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function ProgressBar({ step }: { step: number }) {
   const pct = ((step) / (TOTAL_STEPS - 1)) * 100
@@ -305,9 +317,9 @@ function ProgressBar({ step }: { step: number }) {
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    STEP CARD WRAPPER
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
@@ -324,9 +336,9 @@ function Card({ children }: { children: React.ReactNode }) {
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    SUCCESS STEP (step 18)
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function Step18({ form }: { form: FormData }) {
   const pieces = useMemo(() =>
@@ -401,9 +413,9 @@ function Step18({ form }: { form: FormData }) {
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    FORM OVERLAY — ALL 19 STEPS
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 interface OverlayProps {
   step: number
@@ -678,9 +690,9 @@ function FormOverlay({ step, form, set, next, mobile }: OverlayProps) {
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    MOBILE FALLBACK SCENE
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 function MobileBackground({ step }: { step: number }) {
   return (
@@ -703,9 +715,9 @@ function MobileBackground({ step }: { step: number }) {
   )
 }
 
-/* ══════════════════════════════════════════════════════
+/* ======================================================
    MAIN PAGE
-══════════════════════════════════════════════════════ */
+====================================================== */
 
 export default function FunnelPage() {
   const [step, setStep] = useState(0)
