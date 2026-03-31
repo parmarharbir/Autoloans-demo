@@ -33,30 +33,28 @@ const EMPTY: FormData = {
   housingType: '', monthlyBudget: '', creditScore: '', contactTime: '',
 }
 
-// Car image + position per step
 const STEP_CAR = [
-  { img: 'sedan-hero',     x: '50%', y: '50%', sc: 1.20, r:  0 }, // 0 hero
-  { img: 'sedan-hero',     x: '72%', y: '50%', sc: 1.00, r:  2 }, // 1
-  { img: 'sedan-side',     x: '28%', y: '50%', sc: 0.90, r: -2 }, // 2
-  { img: 'sedan-front',    x: '70%', y: '30%', sc: 0.85, r:  3 }, // 3
-  { img: 'sedan-side',     x: '30%', y: '30%', sc: 0.85, r: -3 }, // 4
-  { img: 'sedan-overhead', x: '50%', y: '22%', sc: 1.00, r:  0 }, // 5
-  { img: 'sedan-rear',     x: '70%', y: '72%', sc: 0.90, r:  2 }, // 6
-  { img: 'sedan-hero',     x: '30%', y: '72%', sc: 0.90, r: -2 }, // 7
-  { img: 'sedan-side',     x: '70%', y: '50%', sc: 1.10, r:  2 }, // 8
-  { img: 'sedan-front',    x: '30%', y: '50%', sc: 0.95, r: -2 }, // 9
-  { img: 'sedan-wheel',    x: '50%', y: '75%', sc: 1.00, r:  0 }, // 10
-  { img: 'sedan-hero',     x: '70%', y: '28%', sc: 0.85, r:  3 }, // 11
-  { img: 'sedan-rear',     x: '30%', y: '28%', sc: 0.85, r: -3 }, // 12
-  { img: 'sedan-interior', x: '50%', y: '50%', sc: 1.05, r:  0 }, // 13
+  { img: 'sedan-hero',     x: '50%', y: '50%', sc: 1.10, r:  0 }, // 0 hero
+  { img: 'sedan-hero',     x: '72%', y: '50%', sc: 0.95, r:  2 }, // 1
+  { img: 'sedan-side',     x: '30%', y: '50%', sc: 0.90, r: -2 }, // 2
+  { img: 'sedan-front',    x: '70%', y: '32%', sc: 0.85, r:  3 }, // 3
+  { img: 'sedan-side',     x: '32%', y: '32%', sc: 0.85, r: -3 }, // 4
+  { img: 'sedan-overhead', x: '50%', y: '24%', sc: 0.95, r:  0 }, // 5
+  { img: 'sedan-rear',     x: '70%', y: '70%', sc: 0.90, r:  2 }, // 6
+  { img: 'sedan-hero',     x: '30%', y: '70%', sc: 0.90, r: -2 }, // 7
+  { img: 'sedan-side',     x: '70%', y: '50%', sc: 1.00, r:  2 }, // 8
+  { img: 'sedan-front',    x: '30%', y: '50%', sc: 0.90, r: -2 }, // 9
+  { img: 'sedan-wheel',    x: '50%', y: '72%', sc: 0.95, r:  0 }, // 10
+  { img: 'sedan-hero',     x: '70%', y: '30%', sc: 0.85, r:  3 }, // 11
+  { img: 'sedan-rear',     x: '30%', y: '30%', sc: 0.85, r: -3 }, // 12
+  { img: 'sedan-interior', x: '50%', y: '48%', sc: 1.00, r:  0 }, // 13
   { img: 'sedan-side',     x: '70%', y: '50%', sc: 0.90, r:  2 }, // 14
   { img: 'sedan-overhead', x: '30%', y: '50%', sc: 0.90, r: -2 }, // 15
-  { img: 'sedan-front',    x: '50%', y: '22%', sc: 1.00, r:  0 }, // 16
-  { img: 'sedan-road',     x: '68%', y: '70%', sc: 0.85, r:  3 }, // 17
-  { img: 'sedan-hero',     x: '50%', y: '50%', sc: 1.30, r:  0 }, // 18 success
+  { img: 'sedan-front',    x: '50%', y: '24%', sc: 1.00, r:  0 }, // 16
+  { img: 'sedan-road',     x: '68%', y: '68%', sc: 0.85, r:  3 }, // 17
+  { img: 'sedan-hero',     x: '50%', y: '44%', sc: 1.20, r:  0 }, // 18 success
 ]
 
-// Question card position per step
 const QPOS: QPos[] = [
   'center',    // 0 hero
   'left',      // 1
@@ -79,15 +77,13 @@ const QPOS: QPos[] = [
   'center',    // 18 success
 ]
 
-// Huge ghost text behind each question
 const GHOST = [
-  'APPROVED', 'TYPE', 'BRAND', 'NAME', 'EMAIL',
-  'PHONE', 'CANADA', 'DOWN', 'AGE', 'HOME',
-  'WORK', 'JOB', 'INCOME', 'SALARY', 'HOUSE',
-  'BUDGET', 'CREDIT', 'CALL', 'YES',
+  'DRIVE',    'CHOOSE', 'BRAND',  'NAME',   'EMAIL',
+  'PHONE',    'CANADA', 'DOWN',   'AGE',    'HOME',
+  'EARN',     'WORK',   'PAY',    'INCOME', 'LIVE',
+  'BUDGET',   'CREDIT', 'CALL',   'APPROVE',
 ]
 
-/* ── Option data ── */
 const VTYPES  = ['Sedan', 'SUV', 'Truck', 'Van', 'Coupe', 'Convertible', 'Electric', 'Other']
 const BRANDS  = ['Toyota','Honda','Ford','Chevrolet','BMW','Mercedes','Audi','Hyundai','Kia','Nissan','Subaru','Volkswagen','Jeep','Ram','GMC','Lexus','Acura','Mazda','Volvo','Tesla','Dodge','Chrysler','Buick','Cadillac','Lincoln','Infiniti','Genesis','Rivian','Lucid','Other']
 const AGES    = ['Under 25', '25–34', '35–44', '45–54', '55–64', '65+']
@@ -101,8 +97,6 @@ const CTIMES  = ['Morning', 'Afternoon', 'Evening', 'Anytime']
 
 /* ══════════════════════════════════════════════════════
    POSITION HELPER
-   Full-inset flex container — no CSS transform needed,
-   so Framer Motion opacity animation never conflicts.
 ══════════════════════════════════════════════════════ */
 
 function cardContainer(pos: QPos, mobile: boolean): React.CSSProperties {
@@ -143,7 +137,7 @@ function QH({ children }: { children: React.ReactNode }) {
       className="font-bold text-[#0a1628] leading-snug mb-5"
       style={{
         fontFamily: 'var(--font-playfair), Georgia, serif',
-        fontSize: 'clamp(1.4rem, 3.2vw, 2.5rem)',
+        fontSize: 'clamp(1.5rem, 3.2vw, 2.5rem)',
       }}
     >
       {children}
@@ -165,7 +159,7 @@ function Pill({
       className={`px-5 py-2.5 rounded-full text-sm font-medium border-[1.5px] transition-colors duration-150 ${
         sel
           ? 'bg-[#F5C842] text-[#0a1628] border-[#F5C842] shadow-md'
-          : 'bg-white text-[#1a1a1a] border-[#e0d4c0] hover:border-[#F5C842] hover:shadow-sm'
+          : 'bg-white text-[#1a1a1a] border-stone-200 hover:border-yellow-400 hover:shadow-md'
       }`}
     >
       {label}
@@ -237,6 +231,7 @@ function Step18({ form }: { form: FormData }) {
 
   return (
     <div className="text-center w-full px-4">
+      {/* Confetti */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-30">
         {pieces.map(c => (
           <div key={c.id} className="absolute rounded-sm" style={{
@@ -256,7 +251,7 @@ function Step18({ form }: { form: FormData }) {
         className="font-bold text-[#0a1628] mb-2"
         style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)' }}
       >
-        You&apos;re Pre-Approved!
+        You are Pre-Approved!
       </motion.h2>
 
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 }}
@@ -266,7 +261,7 @@ function Step18({ form }: { form: FormData }) {
       </motion.p>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}
-        className="bg-white rounded-2xl shadow-xl border border-[#e0d4c0] p-6 text-left space-y-3 max-w-sm mx-auto"
+        className="bg-white rounded-2xl shadow-xl border border-[#e0d4c0] p-6 text-left space-y-3 max-w-sm mx-auto mb-6"
       >
         <p className="text-[#c49a00] font-bold text-xs uppercase tracking-widest mb-4">
           Application Summary
@@ -278,6 +273,12 @@ function Step18({ form }: { form: FormData }) {
           </div>
         ))}
       </motion.div>
+
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
+        className="text-[#0a1628] font-semibold text-sm tracking-wide"
+      >
+        Our Team Will Be In Touch
+      </motion.p>
     </div>
   )
 }
@@ -291,7 +292,6 @@ export default function FunnelPage() {
   const [form, setForm] = useState<FormData>(EMPTY)
   const [mobile, setMobile] = useState(false)
 
-  // Detect mobile viewport
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
     check()
@@ -299,34 +299,18 @@ export default function FunnelPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Sync scroll position → step
-  useEffect(() => {
-    const onScroll = () => {
-      const s = Math.round(window.scrollY / window.innerHeight)
-      setStep(Math.min(Math.max(s, 0), 18))
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const goTo = useCallback((n: number) => {
-    window.scrollTo({ top: Math.max(0, n) * window.innerHeight, behavior: 'smooth' })
-  }, [])
-
-  const next = useCallback(() => goTo(step + 1), [step, goTo])
-  const back = useCallback(() => goTo(step - 1), [step, goTo])
+  const next = useCallback(() => setStep(s => Math.min(s + 1, 18)), [])
+  const back = useCallback(() => setStep(s => Math.max(s - 1, 0)), [])
 
   const set = useCallback((k: keyof FormData, v: string) => {
     setForm(f => ({ ...f, [k]: v }))
   }, [])
 
-  // Select a pill option and auto-advance
   const pick = useCallback((k: keyof FormData, v: string) => {
     setForm(f => ({ ...f, [k]: v }))
-    setTimeout(() => goTo(step + 1), 200)
-  }, [step, goTo])
+    setTimeout(() => setStep(s => Math.min(s + 1, 18)), 220)
+  }, [])
 
-  // Log completed form
   useEffect(() => {
     if (step === 18) console.log('AutoLoans form submission:', form)
   }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -343,9 +327,8 @@ export default function FunnelPage() {
     }
   }
 
-  const isTextStep = [3, 4, 5, 9, 11, 13].includes(step)
-  const car  = STEP_CAR[step]
-  const pos  = QPOS[step]
+  const car   = STEP_CAR[step]
+  const pos   = QPOS[step]
   const ghost = GHOST[step]
 
   /* ── Step content renderer ── */
@@ -358,32 +341,38 @@ export default function FunnelPage() {
           <motion.p initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="text-[#c49a00] text-xs font-bold tracking-widest uppercase mb-3"
           >
-            $0 Down Options Available
+            Canada&apos;s Trusted Auto Loan Network
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="font-bold text-[#0a1628] leading-tight mb-3"
-            style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(2.8rem, 7vw, 6rem)' }}
+            className="font-bold text-[#0a1628] leading-tight mb-2"
+            style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(2.8rem, 7vw, 5.5rem)' }}
           >
             Get Approved<br />For a Vehicle
           </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
-            className="text-[#4a5568] text-lg mb-7"
+          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="text-[#4a5568] text-xl mb-1"
           >
-            No Matter Your Credit or Situation
+            No Matter Your Credit / Situation
           </motion.p>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 }}
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38 }}
+            className="text-[#c49a00] mb-6"
+            style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(1rem, 2vw, 1.25rem)' }}
+          >
+            $0 Down Options Available
+          </motion.p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.48 }}
             className="flex flex-wrap justify-center gap-2 mb-8"
           >
-            {['Bad Credit', 'No Credit', 'Bankruptcy', 'Collections'].map(t => (
+            {['Bad Credit', 'No Credit', 'Bankruptcy', 'Collections', 'Divorce'].map(t => (
               <span key={t} className="bg-[#0a1628] text-white text-xs px-4 py-1.5 rounded-full">✓ {t}</span>
             ))}
           </motion.div>
           <motion.button
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.56, type: 'spring', stiffness: 200 }}
+            transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
             whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(10,22,40,0.22)' }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => goTo(1)}
+            onClick={next}
             className="bg-[#0a1628] text-white font-bold text-lg px-10 py-4 rounded-full shadow-2xl"
           >
             Begin My Journey →
@@ -402,7 +391,7 @@ export default function FunnelPage() {
 
       case 2: return (
         <>
-          <QH>Which brand catches your eye?</QH>
+          <QH>Which brand?</QH>
           <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1 pb-1">
             {BRANDS.map((b, i) => <Pill key={b} label={b} sel={form.vehicleBrand === b} onClick={() => pick('vehicleBrand', b)} delay={Math.min(i * 0.02, 0.3)} />)}
           </div>
@@ -411,7 +400,7 @@ export default function FunnelPage() {
 
       case 3: return (
         <>
-          <QH>What&apos;s your name?</QH>
+          <QH>What is your name?</QH>
           <div className="flex flex-col gap-3 w-full">
             <Inp ph="First name" val={form.firstName} onChange={v => set('firstName', v)} delay={0.1} />
             <Inp ph="Last name"  val={form.lastName}  onChange={v => set('lastName',  v)} delay={0.18} />
@@ -448,7 +437,7 @@ export default function FunnelPage() {
       case 7: return (
         <>
           <QH>Interested in $0 down?</QH>
-          <p className="text-[#6b7280] text-sm -mt-3 mb-4">No down payment required</p>
+          <p className="text-[#6b7280] text-sm -mt-3 mb-4">No down payment required to get started</p>
           <div className="flex gap-3">
             {['Yes', 'No'].map((v, i) => <Pill key={v} label={v} sel={form.zeroDown === v} onClick={() => pick('zeroDown', v)} delay={i * 0.1} />)}
           </div>
@@ -468,8 +457,8 @@ export default function FunnelPage() {
         <>
           <QH>Where are you located?</QH>
           <div className="flex flex-col gap-3 w-full">
-            <Inp ph="Street address"              val={form.street}     onChange={v => set('street',     v)} delay={0.08} />
-            <Inp ph="City"                        val={form.city}       onChange={v => set('city',       v)} delay={0.14} />
+            <Inp ph="Street address"             val={form.street}     onChange={v => set('street',     v)} delay={0.08} />
+            <Inp ph="City"                       val={form.city}       onChange={v => set('city',       v)} delay={0.14} />
             <motion.select
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               value={form.province}
@@ -479,7 +468,7 @@ export default function FunnelPage() {
               <option value="">Select province…</option>
               {PROVS.map(p => <option key={p} value={p}>{p}</option>)}
             </motion.select>
-            <Inp ph="Postal code (e.g. A1B 2C3)"  val={form.postalCode} onChange={v => set('postalCode', v)} delay={0.26} />
+            <Inp ph="Postal code (e.g. A1B 2C3)" val={form.postalCode} onChange={v => set('postalCode', v)} delay={0.26} />
           </div>
           <ContBtn onClick={next} disabled={!canNext()} />
         </>
@@ -498,9 +487,9 @@ export default function FunnelPage() {
         <>
           <QH>Tell us about your work</QH>
           <div className="flex flex-col gap-3 w-full">
-            <Inp ph="Employer name"                  val={form.employerName} onChange={v => set('employerName', v)} delay={0.08} />
-            <Inp ph="Job title"                      val={form.jobTitle}     onChange={v => set('jobTitle',     v)} delay={0.15} />
-            <Inp ph="Time at this job (e.g. 2 yrs)"  val={form.timeAtJob}    onChange={v => set('timeAtJob',    v)} delay={0.22} />
+            <Inp ph="Employer name"                 val={form.employerName} onChange={v => set('employerName', v)} delay={0.08} />
+            <Inp ph="Job title"                     val={form.jobTitle}     onChange={v => set('jobTitle',     v)} delay={0.15} />
+            <Inp ph="Time at this job (e.g. 2 yrs)" val={form.timeAtJob}    onChange={v => set('timeAtJob',    v)} delay={0.22} />
           </div>
           <ContBtn onClick={next} disabled={!canNext()} />
         </>
@@ -517,10 +506,10 @@ export default function FunnelPage() {
 
       case 13: return (
         <>
-          <QH>Monthly income &amp; stability</QH>
+          <QH>Monthly income?</QH>
           <div className="flex flex-col gap-3 w-full">
-            <Inp ph="Monthly amount (e.g. $3,500)"    val={form.incomeAmount}    onChange={v => set('incomeAmount',    v)} delay={0.1}  />
-            <Inp ph="How long at this income level?"  val={form.incomeStability} onChange={v => set('incomeStability', v)} delay={0.18} />
+            <Inp ph="Monthly amount (e.g. $3,500)"  val={form.incomeAmount}    onChange={v => set('incomeAmount',    v)} delay={0.1}  />
+            <Inp ph="How long at this income level?" val={form.incomeStability} onChange={v => set('incomeStability', v)} delay={0.18} />
           </div>
           <ContBtn onClick={next} disabled={!canNext()} />
         </>
@@ -546,7 +535,7 @@ export default function FunnelPage() {
 
       case 16: return (
         <>
-          <QH>How&apos;s your credit?</QH>
+          <QH>How is your credit?</QH>
           <div className="flex flex-wrap gap-2">
             {CREDIT.map((c, i) => <Pill key={c} label={c} sel={form.creditScore === c} onClick={() => pick('creditScore', c)} delay={i * 0.08} />)}
           </div>
@@ -572,160 +561,155 @@ export default function FunnelPage() {
      RENDER
   ══════════════════════════════════════════════════════ */
   return (
-    /* 1900vh scroll space — each of 19 steps occupies 100vh */
-    <div style={{ height: '1900vh' }}>
+    <div
+      className="fixed inset-0 overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #FFFBF5 0%, #FFF3E0 60%, #FFF8ED 100%)' }}
+    >
 
-      {/* Sticky viewport — stays fixed while outer div scrolls */}
-      <div
-        className="sticky top-0 h-screen overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #FFFBF5 0%, #FFF3E0 60%, #FFF8ED 100%)' }}
-      >
-
-        {/* ── Ghost text: huge decorative word behind content ── */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" style={{ zIndex: 0 }}>
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={ghost}
-              initial={{ opacity: 0, scale: 0.93 }}
-              animate={{ opacity: 0.034, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.07 }}
-              transition={{ duration: 0.7 }}
-              className="font-black text-[#0a1628] whitespace-nowrap"
-              style={{ fontSize: 'clamp(5rem, 22vw, 20rem)', letterSpacing: '-0.03em' }}
-            >
-              {ghost}
-            </motion.span>
-          </AnimatePresence>
-        </div>
-
-        {/* ── Floating car ── */}
-        <motion.div
-          className="absolute pointer-events-none"
-          style={{ zIndex: 5 }}
-          animate={{ left: car.x, top: car.y, scale: car.sc, rotate: car.r }}
-          transition={{ duration: 0.95, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          {/* Center on anchor point, then float */}
-          <div style={{ transform: 'translate(-50%, -50%)' }}>
-            <motion.div
-              animate={{ y: [0, -11, 0] }}
-              transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={car.img}
-                  src={`/images/${car.img}.png`}
-                  alt="Vehicle"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.45 }}
-                  draggable={false}
-                  style={{
-                    width: mobile ? 'clamp(180px, 60vw, 300px)' : 'clamp(300px, 38vw, 580px)',
-                    height: 'auto',
-                    filter: 'drop-shadow(0 40px 80px rgba(0,0,0,0.18)) drop-shadow(0 8px 24px rgba(0,0,0,0.1))',
-                    userSelect: 'none',
-                  }}
-                />
-              </AnimatePresence>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* ── Gold progress bar ── */}
-        {step > 0 && step < 18 && (
-          <div className="fixed top-0 left-0 right-0 z-50" style={{ height: 3, background: '#f0e8d8' }}>
-            <motion.div
-              className="h-full"
-              animate={{ width: `${(step / 17) * 100}%` }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              style={{ background: '#F5C842', boxShadow: '0 0 8px rgba(245,200,66,0.55)' }}
-            />
-          </div>
-        )}
-
-        {/* ── Back button ── */}
-        {step > 0 && step < 18 && (
-          <button
-            onClick={back}
-            className="fixed top-4 left-4 z-50 text-[#6b7280] hover:text-[#0a1628] text-xs flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm transition-colors"
-          >
-            ← Back
-          </button>
-        )}
-
-        {/* ── Step counter ── */}
-        {step > 0 && step < 18 && (
-          <div className="fixed top-4 right-4 z-50 text-[#9a8a7a] text-xs bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm">
-            {step} / 17
-          </div>
-        )}
-
-        {/* ── Question card
-              Full-inset absolute flex container so we avoid CSS transform conflicts.
-              AnimatePresence keys on step so old card fades out before new fades in.
-        ── */}
-        <AnimatePresence mode="wait">
+      {/* Step 18: full-bleed overhead background + golden overlay */}
+      <AnimatePresence>
+        {step === 18 && (
           <motion.div
-            key={step}
+            key="success-bg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.32 }}
-            style={{ ...cardContainer(pos, mobile), zIndex: 20 }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0 z-0"
           >
-            <div
-              style={{
-                maxWidth: pos === 'center' ? 640 : (mobile ? 'calc(100vw - 2rem)' : 420),
-                width: '100%',
-                pointerEvents: 'auto',
-              }}
-            >
-              {pos === 'center' ? (
-                /* Hero + success: text sits directly on cream bg, no card */
-                <div className="text-center">
-                  {renderContent()}
-                </div>
-              ) : (
-                /* All other steps: frosted white card */
-                <div
-                  className="rounded-2xl border border-[#e8dfd0] p-6"
-                  style={{
-                    background: 'rgba(255,252,248,0.92)',
-                    backdropFilter: 'blur(12px)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {renderContent()}
-                  {isTextStep && (
-                    <p className="text-[#c0b0a0] text-xs mt-3">You can also scroll to advance</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* ── Scroll nudge on hero ── */}
-        {step === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.8 }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
-          >
-            <span className="text-[#9a8a7a] text-xs tracking-wide">scroll to explore</span>
-            <motion.div
-              animate={{ y: [0, 7, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="w-px h-8 rounded-full"
-              style={{ background: 'linear-gradient(to bottom, #9a8a7a, transparent)' }}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/sedan-overhead.png"
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ filter: 'brightness(0.9) saturate(1.2)' }}
             />
+            <div className="absolute inset-0" style={{ background: 'rgba(245,200,66,0.15)' }} />
           </motion.div>
         )}
+      </AnimatePresence>
 
-      </div>{/* /sticky */}
+      {/* ── Ghost text ── */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" style={{ zIndex: 1 }}>
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={ghost}
+            initial={{ opacity: 0, scale: 0.93 }}
+            animate={{ opacity: step === 18 ? 0 : 0.04, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.07 }}
+            transition={{ duration: 0.7 }}
+            className="font-black text-[#0a1628] whitespace-nowrap"
+            style={{ fontSize: 'clamp(5rem, 22vw, 20rem)', letterSpacing: '-0.03em' }}
+          >
+            {ghost}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+
+      {/* ── Floating car ── */}
+      <motion.div
+        className="absolute pointer-events-none"
+        style={{ zIndex: 5 }}
+        animate={{ left: car.x, top: car.y, scale: car.sc, rotate: car.r }}
+        transition={{ duration: 0.95, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <div style={{ transform: 'translate(-50%, -50%)' }}>
+          {/* Hero: gentle infinite bob; other steps: no extra animation */}
+          <motion.div
+            animate={step === 0 ? { y: [0, -12, 0] } : { y: 0 }}
+            transition={
+              step === 0
+                ? { duration: 4.5, repeat: Infinity, ease: 'easeInOut' }
+                : { duration: 0.5 }
+            }
+          >
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={car.img}
+                src={`/images/${car.img}.png`}
+                alt="2024 Hyundai Sonata N-Line"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.45 }}
+                draggable={false}
+                style={{
+                  width: mobile ? 'clamp(180px, 60vw, 300px)' : 'clamp(300px, 38vw, 580px)',
+                  height: 'auto',
+                  filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.35))',
+                  userSelect: 'none',
+                }}
+              />
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* ── Gold progress bar ── */}
+      {step > 0 && step < 18 && (
+        <div className="fixed top-0 left-0 right-0 z-50" style={{ height: 3, background: '#f0e8d8' }}>
+          <motion.div
+            className="h-full"
+            animate={{ width: `${(step / 17) * 100}%` }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            style={{ background: '#F5C842', boxShadow: '0 0 8px rgba(245,200,66,0.55)' }}
+          />
+        </div>
+      )}
+
+      {/* ── Back button ── */}
+      {step > 0 && step < 18 && (
+        <button
+          onClick={back}
+          className="fixed top-4 left-4 z-50 text-[#6b7280] hover:text-[#0a1628] text-xs flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm transition-colors"
+        >
+          ← Back
+        </button>
+      )}
+
+      {/* ── Step counter ── */}
+      {step > 0 && step < 18 && (
+        <div className="fixed top-4 right-4 z-50 text-[#9a8a7a] text-xs bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm">
+          {step} / 17
+        </div>
+      )}
+
+      {/* ── Question card ── */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.32 }}
+          style={{ ...cardContainer(pos, mobile), zIndex: 20 }}
+        >
+          <div
+            style={{
+              maxWidth: pos === 'center' ? 640 : (mobile ? 'calc(100vw - 2rem)' : 420),
+              width: '100%',
+              pointerEvents: 'auto',
+            }}
+          >
+            {pos === 'center' ? (
+              <div className={step === 18 ? 'text-center' : 'text-center'}>
+                {renderContent()}
+              </div>
+            ) : (
+              <div
+                className="rounded-2xl border border-[#e8dfd0] p-6"
+                style={{
+                  background: 'rgba(255,252,248,0.92)',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
+                }}
+              >
+                {renderContent()}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }
