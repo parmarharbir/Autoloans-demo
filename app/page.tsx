@@ -1,48 +1,30 @@
 'use client'
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TOTAL_STEPS = 19
-const TIMESTAMPS = Array.from({ length: TOTAL_STEPS }, (_, i) =>
-  parseFloat(((i / (TOTAL_STEPS - 1)) * 4.8).toFixed(3))
-)
-
-const TEXT_SHADOW = '0 2px 12px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,0.7)'
-const CARD_SHADOW = '0 8px 40px rgba(0,0,0,0.4), 0 0 60px rgba(245,200,66,0.08)'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════════════
+   TYPES
+══════════════════════════════════════════════════════ */
 
 interface FormData {
-  vehicleType: string
-  vehicleBrand: string
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  isCanadian: string
-  zeroDown: string
-  ageRange: string
-  street: string
-  city: string
-  province: string
-  postalCode: string
-  employment: string
-  employerName: string
-  jobTitle: string
-  timeAtJob: string
-  incomeType: string
-  incomeAmount: string
-  incomeStability: string
-  housingType: string
-  monthlyBudget: string
-  creditScore: string
-  contactTime: string
+  vehicleType: string; vehicleBrand: string
+  firstName: string; lastName: string
+  email: string; phone: string
+  isCanadian: string; zeroDown: string; ageRange: string
+  street: string; city: string; province: string; postalCode: string
+  employment: string; employerName: string; jobTitle: string; timeAtJob: string
+  incomeType: string; incomeAmount: string; incomeStability: string
+  housingType: string; monthlyBudget: string; creditScore: string; contactTime: string
 }
 
-const EMPTY_FORM: FormData = {
+type QPos = 'center' | 'left' | 'right' | 'bot-left' | 'bot-right' | 'top-left' | 'top-right' | 'top' | 'bottom'
+
+/* ══════════════════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════════════════ */
+
+const EMPTY: FormData = {
   vehicleType: '', vehicleBrand: '', firstName: '', lastName: '',
   email: '', phone: '', isCanadian: '', zeroDown: '', ageRange: '',
   street: '', city: '', province: '', postalCode: '',
@@ -51,506 +33,248 @@ const EMPTY_FORM: FormData = {
   housingType: '', monthlyBudget: '', creditScore: '', contactTime: '',
 }
 
-// ─── Options ──────────────────────────────────────────────────────────────────
-
-const VEHICLE_TYPES  = ['Sedan','SUV','Truck','Van','Coupe','Convertible','Electric','Other']
-const VEHICLE_BRANDS = [
-  'Toyota','Honda','Ford','Chevrolet','BMW','Mercedes','Audi','Hyundai',
-  'Kia','Nissan','Subaru','Volkswagen','Jeep','Ram','GMC','Lexus',
-  'Acura','Mazda','Volvo','Tesla','Dodge','Chrysler','Buick','Cadillac',
-  'Lincoln','Infiniti','Genesis','Rivian','Lucid','Other',
+// Car image + position per step
+const STEP_CAR = [
+  { img: 'sedan-hero',     x: '50%', y: '50%', sc: 1.20, r:  0 }, // 0 hero
+  { img: 'sedan-hero',     x: '72%', y: '50%', sc: 1.00, r:  2 }, // 1
+  { img: 'sedan-side',     x: '28%', y: '50%', sc: 0.90, r: -2 }, // 2
+  { img: 'sedan-front',    x: '70%', y: '30%', sc: 0.85, r:  3 }, // 3
+  { img: 'sedan-side',     x: '30%', y: '30%', sc: 0.85, r: -3 }, // 4
+  { img: 'sedan-overhead', x: '50%', y: '22%', sc: 1.00, r:  0 }, // 5
+  { img: 'sedan-rear',     x: '70%', y: '72%', sc: 0.90, r:  2 }, // 6
+  { img: 'sedan-hero',     x: '30%', y: '72%', sc: 0.90, r: -2 }, // 7
+  { img: 'sedan-side',     x: '70%', y: '50%', sc: 1.10, r:  2 }, // 8
+  { img: 'sedan-front',    x: '30%', y: '50%', sc: 0.95, r: -2 }, // 9
+  { img: 'sedan-wheel',    x: '50%', y: '75%', sc: 1.00, r:  0 }, // 10
+  { img: 'sedan-hero',     x: '70%', y: '28%', sc: 0.85, r:  3 }, // 11
+  { img: 'sedan-rear',     x: '30%', y: '28%', sc: 0.85, r: -3 }, // 12
+  { img: 'sedan-interior', x: '50%', y: '50%', sc: 1.05, r:  0 }, // 13
+  { img: 'sedan-side',     x: '70%', y: '50%', sc: 0.90, r:  2 }, // 14
+  { img: 'sedan-overhead', x: '30%', y: '50%', sc: 0.90, r: -2 }, // 15
+  { img: 'sedan-front',    x: '50%', y: '22%', sc: 1.00, r:  0 }, // 16
+  { img: 'sedan-road',     x: '68%', y: '70%', sc: 0.85, r:  3 }, // 17
+  { img: 'sedan-hero',     x: '50%', y: '50%', sc: 1.30, r:  0 }, // 18 success
 ]
-const AGE_RANGES         = ['Under 25','25\u201334','35\u201344','45\u201354','55\u201364','65+']
-const PROVINCES          = ['Alberta','British Columbia','Manitoba','New Brunswick','Newfoundland and Labrador','Nova Scotia','Ontario','Prince Edward Island','Quebec','Saskatchewan','Northwest Territories','Nunavut','Yukon']
-const EMPLOYMENT_OPTIONS = ['Employed','Self-Employed','Retired','Student','Other']
-const INCOME_TYPES       = ['Salary','Hourly','Commission','Business','Pension','Disability','Other']
-const HOUSING_TYPES      = ['Own','Rent','Live with family','Other']
-const BUDGET_OPTIONS     = ['Under $300','$300\u2013$400','$400\u2013$500','$500\u2013$700','$700+']
-const CREDIT_SCORES      = ['Excellent 750+','Good 700\u2013749','Fair 650\u2013699','Poor 600\u2013649','Bad below 600','Not sure']
-const CONTACT_TIMES      = ['Morning','Afternoon','Evening','Anytime']
 
-// ─── Shared UI ────────────────────────────────────────────────────────────────
+// Question card position per step
+const QPOS: QPos[] = [
+  'center',    // 0 hero
+  'left',      // 1
+  'right',     // 2
+  'bot-left',  // 3
+  'bot-right', // 4
+  'bottom',    // 5
+  'top-left',  // 6
+  'top-right', // 7
+  'left',      // 8
+  'right',     // 9
+  'top',       // 10
+  'bot-left',  // 11
+  'bot-right', // 12
+  'bottom',    // 13
+  'left',      // 14
+  'right',     // 15
+  'bottom',    // 16
+  'top-left',  // 17
+  'center',    // 18 success
+]
 
-function StepHeading({ children }: { children: React.ReactNode }) {
+// Huge ghost text behind each question
+const GHOST = [
+  'APPROVED', 'TYPE', 'BRAND', 'NAME', 'EMAIL',
+  'PHONE', 'CANADA', 'DOWN', 'AGE', 'HOME',
+  'WORK', 'JOB', 'INCOME', 'SALARY', 'HOUSE',
+  'BUDGET', 'CREDIT', 'CALL', 'YES',
+]
+
+/* ── Option data ── */
+const VTYPES  = ['Sedan', 'SUV', 'Truck', 'Van', 'Coupe', 'Convertible', 'Electric', 'Other']
+const BRANDS  = ['Toyota','Honda','Ford','Chevrolet','BMW','Mercedes','Audi','Hyundai','Kia','Nissan','Subaru','Volkswagen','Jeep','Ram','GMC','Lexus','Acura','Mazda','Volvo','Tesla','Dodge','Chrysler','Buick','Cadillac','Lincoln','Infiniti','Genesis','Rivian','Lucid','Other']
+const AGES    = ['Under 25', '25–34', '35–44', '45–54', '55–64', '65+']
+const PROVS   = ['Alberta','British Columbia','Manitoba','New Brunswick','Newfoundland and Labrador','Nova Scotia','Ontario','Prince Edward Island','Quebec','Saskatchewan','Northwest Territories','Nunavut','Yukon']
+const EMPLS   = ['Employed', 'Self-Employed', 'Retired', 'Student', 'Other']
+const ITYPES  = ['Salary', 'Hourly', 'Commission', 'Business', 'Pension', 'Disability', 'Other']
+const HOUSE   = ['Own', 'Rent', 'Live with family', 'Other']
+const BUDGET  = ['Under $300', '$300–$400', '$400–$500', '$500–$700', '$700+']
+const CREDIT  = ['Excellent 750+', 'Good 700–749', 'Fair 650–699', 'Poor 600–649', 'Bad below 600', 'Not sure']
+const CTIMES  = ['Morning', 'Afternoon', 'Evening', 'Anytime']
+
+/* ══════════════════════════════════════════════════════
+   POSITION HELPER
+   Full-inset flex container — no CSS transform needed,
+   so Framer Motion opacity animation never conflicts.
+══════════════════════════════════════════════════════ */
+
+function cardContainer(pos: QPos, mobile: boolean): React.CSSProperties {
+  const base: React.CSSProperties = {
+    position: 'absolute', inset: 0, display: 'flex', pointerEvents: 'none',
+  }
+  if (mobile) {
+    return {
+      ...base,
+      alignItems: pos === 'center' ? 'center' : 'flex-end',
+      justifyContent: 'center',
+      paddingBottom: pos === 'center' ? 0 : '5vh',
+    }
+  }
+  switch (pos) {
+    case 'center':    return { ...base, alignItems: 'center',     justifyContent: 'center' }
+    case 'left':      return { ...base, alignItems: 'center',     justifyContent: 'flex-start', paddingLeft: '4vw' }
+    case 'right':     return { ...base, alignItems: 'center',     justifyContent: 'flex-end',   paddingRight: '4vw' }
+    case 'bot-left':  return { ...base, alignItems: 'flex-end',   justifyContent: 'flex-start', padding: '0 4vw 10vh 4vw' }
+    case 'bot-right': return { ...base, alignItems: 'flex-end',   justifyContent: 'flex-end',   padding: '0 4vw 10vh 4vw' }
+    case 'top-left':  return { ...base, alignItems: 'flex-start', justifyContent: 'flex-start', padding: '14vh 4vw 0 4vw' }
+    case 'top-right': return { ...base, alignItems: 'flex-start', justifyContent: 'flex-end',   padding: '14vh 4vw 0 4vw' }
+    case 'top':       return { ...base, alignItems: 'flex-start', justifyContent: 'center',     paddingTop: '14vh' }
+    case 'bottom':    return { ...base, alignItems: 'flex-end',   justifyContent: 'center',     paddingBottom: '10vh' }
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   SHARED MICRO-COMPONENTS
+══════════════════════════════════════════════════════ */
+
+function QH({ children }: { children: React.ReactNode }) {
   return (
     <motion.h2
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight"
-      style={{ fontFamily: 'var(--font-playfair), Georgia, serif', textShadow: TEXT_SHADOW }}
+      transition={{ duration: 0.35 }}
+      className="font-bold text-[#0a1628] leading-snug mb-5"
+      style={{
+        fontFamily: 'var(--font-playfair), Georgia, serif',
+        fontSize: 'clamp(1.4rem, 3.2vw, 2.5rem)',
+      }}
     >
       {children}
     </motion.h2>
   )
 }
 
-function PillButton({
-  label, selected, onClick, delay = 0,
-}: {
-  label: string; selected: boolean; onClick: () => void; delay?: number
-}) {
+function Pill({
+  label, sel, onClick, delay = 0,
+}: { label: string; sel: boolean; onClick: () => void; delay?: number }) {
   return (
     <motion.button
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3, ease: 'easeOut' }}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.96 }}
+      transition={{ delay, duration: 0.22 }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={[
-        'px-5 py-3 rounded-full text-sm font-medium border transition-all duration-200',
-        selected
-          ? 'bg-[#F5C842] text-black border-[#F5C842] shadow-lg'
-          : 'bg-white/20 text-white border-white/30 backdrop-blur-md hover:bg-white/30',
-      ].join(' ')}
+      className={`px-5 py-2.5 rounded-full text-sm font-medium border-[1.5px] transition-colors duration-150 ${
+        sel
+          ? 'bg-[#F5C842] text-[#0a1628] border-[#F5C842] shadow-md'
+          : 'bg-white text-[#1a1a1a] border-[#e0d4c0] hover:border-[#F5C842] hover:shadow-sm'
+      }`}
     >
       {label}
     </motion.button>
   )
 }
 
-function GlassInput({
-  placeholder, value, onChange, type = 'text', delay = 0,
-}: {
-  placeholder: string; value: string; onChange: (v: string) => void; type?: string; delay?: number
-}) {
+function Inp({
+  ph, val, onChange, type = 'text', delay = 0,
+}: { ph: string; val: string; onChange: (v: string) => void; type?: string; delay?: number }) {
   return (
     <motion.input
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
+      transition={{ delay, duration: 0.22 }}
       type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3.5 text-white placeholder-white/50 focus:outline-none focus:border-[#F5C842]/80 focus:bg-white/20 transition-all text-base"
+      placeholder={ph}
+      value={val}
+      onChange={e => onChange(e.target.value)}
+      className="w-full bg-white border border-[#e0d4c0] rounded-xl px-4 py-3 text-[#1a1a1a] placeholder-[#b0a090] focus:outline-none focus:border-[#F5C842] focus:ring-2 focus:ring-[#F5C842]/20 text-sm transition-all"
     />
   )
 }
 
-function GlassSelect({
-  placeholder, value, onChange, options, delay = 0,
-}: {
-  placeholder: string; value: string; onChange: (v: string) => void; options: string[]; delay?: number
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.3 }}
-      className="relative w-full"
-    >
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-[#F5C842]/80 transition-all text-base appearance-none cursor-pointer"
-        style={{ colorScheme: 'dark' }}
-      >
-        <option value="" disabled style={{ background: '#1a1208' }}>{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o} style={{ background: '#1a1208' }}>{o}</option>
-        ))}
-      </select>
-      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/60 text-xs">
-        &#9662;
-      </div>
-    </motion.div>
-  )
-}
-
-function NextButton({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
+function ContBtn({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <motion.button
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.35 }}
-      whileHover={!disabled ? { scale: 1.04, boxShadow: '0 8px 32px rgba(245,200,66,0.4)' } : {}}
-      whileTap={!disabled ? { scale: 0.97 } : {}}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.3 }}
+      whileHover={!disabled ? { scale: 1.03 } : {}}
+      whileTap={!disabled ? { scale: 0.98 } : {}}
       onClick={onClick}
       disabled={disabled}
-      className={[
-        'mt-7 px-9 py-3.5 rounded-full font-semibold text-base transition-all',
+      className={`mt-5 px-8 py-3 rounded-full font-semibold text-sm transition-all ${
         disabled
-          ? 'bg-white/10 text-white/35 cursor-not-allowed border border-white/15'
-          : 'bg-[#F5C842] text-black shadow-xl',
-      ].join(' ')}
+          ? 'bg-[#e8dfd0] text-[#a09080] cursor-not-allowed'
+          : 'bg-[#0a1628] text-white shadow-lg hover:shadow-xl hover:bg-[#162238]'
+      }`}
     >
-      Continue &#8594;
+      Continue →
     </motion.button>
   )
 }
 
-// ─── Step Components ──────────────────────────────────────────────────────────
-
-function Step0({ onNext }: { onNext: () => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-xl mx-auto">
-      <motion.p
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="text-[#F5C842] text-sm font-semibold tracking-widest uppercase mb-3"
-        style={{ textShadow: TEXT_SHADOW }}
-      >
-        $0 Down Options Available
-      </motion.p>
-      <motion.h1
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight mb-4"
-        style={{ fontFamily: 'var(--font-playfair), Georgia, serif', textShadow: TEXT_SHADOW }}
-      >
-        Get Approved For a Vehicle
-      </motion.h1>
-      <motion.p
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.32 }}
-        className="text-white/90 text-lg sm:text-xl mb-8"
-        style={{ textShadow: TEXT_SHADOW }}
-      >
-        No Matter Your Credit or Situation
-      </motion.p>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.44 }}
-        className="flex flex-wrap justify-center gap-2 mb-9"
-      >
-        {['Bad Credit','No Credit','Bankruptcy','Collections'].map((t) => (
-          <span
-            key={t}
-            className="bg-white/15 backdrop-blur-sm border border-white/25 text-white/90 text-xs px-3 py-1.5 rounded-full"
-          >
-            &#10003; {t}
-          </span>
-        ))}
-      </motion.div>
-      <motion.button
-        initial={{ opacity: 0, scale: 0.88 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.58, type: 'spring', stiffness: 200 }}
-        whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(245,200,66,0.5)' }}
-        whileTap={{ scale: 0.97 }}
-        onClick={onNext}
-        className="bg-[#F5C842] text-black font-bold text-lg px-10 py-4 rounded-full shadow-2xl"
-      >
-        Begin My Journey &#8594;
-      </motion.button>
-    </div>
-  )
-}
-
-function Step1({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>What type of vehicle are you looking for?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {VEHICLE_TYPES.map((t, i) => (
-          <PillButton key={t} label={t} selected={value === t} onClick={() => onSelect(t)} delay={i * 0.06} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step2({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-2xl mx-auto">
-      <StepHeading>Which brand catches your eye?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-2 mt-7 max-h-64 overflow-y-auto px-2 pb-2">
-        {VEHICLE_BRANDS.map((b, i) => (
-          <PillButton key={b} label={b} selected={value === b} onClick={() => onSelect(b)} delay={Math.min(i * 0.025, 0.4)} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step3({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
-      <StepHeading>What&apos;s your name?</StepHeading>
-      <div className="flex flex-col gap-4 mt-7 w-full">
-        <GlassInput placeholder="First name" value={form.firstName} onChange={(v) => onChange('firstName', v)} delay={0.12} />
-        <GlassInput placeholder="Last name"  value={form.lastName}  onChange={(v) => onChange('lastName',  v)} delay={0.22} />
-      </div>
-    </div>
-  )
-}
-
-function Step4({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
-      <StepHeading>What&apos;s your email address?</StepHeading>
-      <div className="mt-7 w-full">
-        <GlassInput placeholder="your@email.com" value={value} onChange={onChange} type="email" delay={0.12} />
-      </div>
-    </div>
-  )
-}
-
-function Step5({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
-      <StepHeading>What&apos;s your phone number?</StepHeading>
-      <div className="mt-7 w-full">
-        <GlassInput placeholder="(555) 123-4567" value={value} onChange={onChange} type="tel" delay={0.12} />
-      </div>
-    </div>
-  )
-}
-
-function Step6({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto">
-      <StepHeading>Are you a Canadian resident?</StepHeading>
-      <div className="flex gap-4 mt-7">
-        {['Yes','No'].map((v, i) => (
-          <PillButton key={v} label={v} selected={value === v} onClick={() => onSelect(v)} delay={i * 0.1} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step7({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto">
-      <StepHeading>Do you have a down payment?</StepHeading>
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.22 }}
-        className="text-white/65 text-sm mt-2"
-        style={{ textShadow: TEXT_SHADOW }}
-      >
-        $0 down options available
-      </motion.p>
-      <div className="flex gap-4 mt-6">
-        {['Yes','No'].map((v, i) => (
-          <PillButton key={v} label={v} selected={value === v} onClick={() => onSelect(v)} delay={i * 0.1} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step8({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>What&apos;s your age range?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {AGE_RANGES.map((a, i) => (
-          <PillButton key={a} label={a} selected={value === a} onClick={() => onSelect(a)} delay={i * 0.07} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step9({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
-      <StepHeading>What&apos;s your address?</StepHeading>
-      <div className="flex flex-col gap-4 mt-7 w-full">
-        <GlassInput placeholder="Street address"              value={form.street}     onChange={(v) => onChange('street',     v)} delay={0.10} />
-        <GlassInput placeholder="City"                        value={form.city}       onChange={(v) => onChange('city',       v)} delay={0.16} />
-        <GlassSelect placeholder="Select province..."          value={form.province}   onChange={(v) => onChange('province',   v)} options={PROVINCES} delay={0.22} />
-        <GlassInput placeholder="Postal code (e.g. A1B 2C3)"  value={form.postalCode} onChange={(v) => onChange('postalCode', v)} delay={0.28} />
-      </div>
-    </div>
-  )
-}
-
-function Step10({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>What&apos;s your employment status?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {EMPLOYMENT_OPTIONS.map((e, i) => (
-          <PillButton key={e} label={e} selected={value === e} onClick={() => onSelect(e)} delay={i * 0.07} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step11({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
-      <StepHeading>Tell us about your work</StepHeading>
-      <div className="flex flex-col gap-4 mt-7 w-full">
-        <GlassInput placeholder="Employer name"                    value={form.employerName} onChange={(v) => onChange('employerName', v)} delay={0.10} />
-        <GlassInput placeholder="Job title"                        value={form.jobTitle}     onChange={(v) => onChange('jobTitle',     v)} delay={0.17} />
-        <GlassInput placeholder="Time at this job (e.g. 2 years)"  value={form.timeAtJob}    onChange={(v) => onChange('timeAtJob',    v)} delay={0.24} />
-      </div>
-    </div>
-  )
-}
-
-function Step12({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>What type of income do you receive?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {INCOME_TYPES.map((t, i) => (
-          <PillButton key={t} label={t} selected={value === t} onClick={() => onSelect(t)} delay={i * 0.07} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step13({ form, onChange }: { form: FormData; onChange: (k: keyof FormData, v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-md mx-auto w-full">
-      <StepHeading>Tell us about your income</StepHeading>
-      <div className="flex flex-col gap-4 mt-7 w-full">
-        <GlassInput placeholder="Monthly amount (e.g. $3,500)"       value={form.incomeAmount}    onChange={(v) => onChange('incomeAmount',    v)} delay={0.12} />
-        <GlassInput placeholder="How long have you had this income?"  value={form.incomeStability} onChange={(v) => onChange('incomeStability', v)} delay={0.22} />
-      </div>
-    </div>
-  )
-}
-
-function Step14({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>What&apos;s your housing situation?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {HOUSING_TYPES.map((h, i) => (
-          <PillButton key={h} label={h} selected={value === h} onClick={() => onSelect(h)} delay={i * 0.08} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step15({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>What&apos;s your monthly car budget?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {BUDGET_OPTIONS.map((b, i) => (
-          <PillButton key={b} label={b} selected={value === b} onClick={() => onSelect(b)} delay={i * 0.08} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step16({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>How would you rate your credit?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {CREDIT_SCORES.map((c, i) => (
-          <PillButton key={c} label={c} selected={value === c} onClick={() => onSelect(c)} delay={i * 0.08} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Step17({ value, onSelect }: { value: string; onSelect: (v: string) => void }) {
-  return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-      <StepHeading>When&apos;s the best time to reach you?</StepHeading>
-      <div className="flex flex-wrap justify-center gap-3 mt-7">
-        {CONTACT_TIMES.map((t, i) => (
-          <PillButton key={t} label={t} selected={value === t} onClick={() => onSelect(t)} delay={i * 0.1} />
-        ))}
-      </div>
-    </div>
-  )
-}
+/* ══════════════════════════════════════════════════════
+   SUCCESS STEP (step 18)
+══════════════════════════════════════════════════════ */
 
 function Step18({ form }: { form: FormData }) {
-  const confetti = useMemo(() =>
-    Array.from({ length: 64 }, (_, i) => ({
-      id:       i,
-      left:     (i * 7.3)   % 100,
-      delay:    (i * 0.127) % 3,
-      color:    (['#F5C842','#FFF7DC','#FFD700','#FFFACD','#FFF0A0','#ffffff'] as const)[i % 6],
-      width:    5 + (i % 7),
-      height:   3 + (i % 4),
-      duration: 2.4 + (i % 3) * 0.6,
+  const pieces = useMemo(() =>
+    Array.from({ length: 56 }, (_, i) => ({
+      id: i,
+      left: (i * 7.3) % 100,
+      delay: (i * 0.13) % 3,
+      color: ['#F5C842', '#0a1628', '#F5A800', '#FFD700', '#c8b45a', '#ffffff'][i % 6],
+      w: 5 + (i % 7), h: 3 + (i % 4),
+      dur: 2.4 + (i % 3) * 0.6,
     }))
   , [])
 
-  const summaryRows: [string, string][] = [
+  const rows: [string, string][] = [
     ['Name',    `${form.firstName} ${form.lastName}`.trim()],
-    ['Vehicle', [form.vehicleType, form.vehicleBrand].filter(Boolean).join(' \u2014 ')],
+    ['Vehicle', [form.vehicleType, form.vehicleBrand].filter(Boolean).join(' — ')],
     ['Credit',  form.creditScore],
     ['Budget',  form.monthlyBudget ? `${form.monthlyBudget}/mo` : ''],
-    ['Contact', [form.contactTime, form.phone].filter(Boolean).join(' \u00b7 ')],
+    ['Contact', [form.contactTime, form.phone].filter(Boolean).join(' · ')],
   ]
 
   return (
-    <div className="flex flex-col items-center text-center px-6 max-w-lg mx-auto">
+    <div className="text-center w-full px-4">
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-30">
-        {confetti.map((c) => (
-          <div
-            key={c.id}
-            className="absolute rounded-sm"
-            style={{
-              left:            `${c.left}%`,
-              top:             '-12px',
-              width:           c.width,
-              height:          c.height,
-              backgroundColor: c.color,
-              animation:       `confettiFall ${c.duration}s ease-in ${c.delay}s infinite`,
-            }}
-          />
+        {pieces.map(c => (
+          <div key={c.id} className="absolute rounded-sm" style={{
+            left: `${c.left}%`, top: '-12px',
+            width: c.w, height: c.h, backgroundColor: c.color,
+            animation: `confettiFall ${c.dur}s ease-in ${c.delay}s infinite`,
+          }} />
         ))}
       </div>
 
-      <motion.div
-        initial={{ scale: 0.4, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+      <motion.div initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 240, delay: 0.1 }}
-        className="text-6xl mb-4 select-none"
-      >
-        &#127881;
-      </motion.div>
+        className="text-5xl mb-3 select-none"
+      >🎉</motion.div>
 
-      <motion.h2
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="text-4xl sm:text-5xl font-bold text-white mb-2"
-        style={{ fontFamily: 'var(--font-playfair), Georgia, serif', textShadow: TEXT_SHADOW }}
+      <motion.h2 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
+        className="font-bold text-[#0a1628] mb-2"
+        style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(2rem, 5vw, 3.5rem)' }}
       >
         You&apos;re Pre-Approved!
       </motion.h2>
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
-        className="text-[#F5C842] text-base mb-7"
-        style={{ textShadow: TEXT_SHADOW }}
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 }}
+        className="text-[#6b7280] mb-6 text-sm"
       >
         A specialist will contact you shortly
       </motion.p>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.62 }}
-        className="bg-white/15 backdrop-blur-xl border border-white/25 rounded-2xl p-6 w-full text-left space-y-3"
-        style={{ boxShadow: CARD_SHADOW }}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.58 }}
+        className="bg-white rounded-2xl shadow-xl border border-[#e0d4c0] p-6 text-left space-y-3 max-w-sm mx-auto"
       >
-        <p className="text-[#F5C842] font-semibold text-xs uppercase tracking-widest mb-3">
+        <p className="text-[#c49a00] font-bold text-xs uppercase tracking-widest mb-4">
           Application Summary
         </p>
-        {summaryRows.filter(([, v]) => v).map(([label, val]) => (
+        {rows.filter(([, v]) => v).map(([label, val]) => (
           <div key={label} className="flex justify-between gap-4 text-sm">
-            <span className="text-white/55">{label}</span>
-            <span className="text-white font-medium text-right">{val}</span>
+            <span className="text-[#9a8a7a]">{label}</span>
+            <span className="text-[#0a1628] font-medium text-right">{val}</span>
           </div>
         ))}
       </motion.div>
@@ -558,79 +282,56 @@ function Step18({ form }: { form: FormData }) {
   )
 }
 
-// ─── Step position map ────────────────────────────────────────────────────────
-
-interface StepLayout {
-  css: React.CSSProperties
-  x?: string
-  fullOverlay?: boolean
-}
-
-const _TL: StepLayout = { css: { top: '10%',    left:   '8%' } }
-const _TR: StepLayout = { css: { top: '10%',    right:  '8%' } }
-const _BL: StepLayout = { css: { bottom: '15%', left:   '8%' } }
-const _BR: StepLayout = { css: { bottom: '15%', right:  '8%' } }
-const _TC: StepLayout = { css: { top: '10%',    left: '50%' }, x: '-50%' }
-const _BC: StepLayout = { css: { bottom: '15%', left: '50%' }, x: '-50%' }
-const _FO: StepLayout = { css: {}, fullOverlay: true }
-
-const STEP_LAYOUTS: StepLayout[] = [
-  _FO, // 0  hero
-  _TL, // 1
-  _TR, // 2
-  _BL, // 3
-  _BR, // 4
-  _TC, // 5
-  _BC, // 6
-  _TL, // 7
-  _TR, // 8
-  _BL, // 9
-  _BR, // 10
-  _TL, // 11
-  _TR, // 12
-  _BL, // 13
-  _BR, // 14
-  _TC, // 15
-  _BC, // 16
-  _TL, // 17
-  _FO, // 18 success
-]
-
-// ─── Main Funnel ──────────────────────────────────────────────────────────────
+/* ══════════════════════════════════════════════════════
+   MAIN PAGE
+══════════════════════════════════════════════════════ */
 
 export default function FunnelPage() {
   const [step, setStep] = useState(0)
-  const [form, setForm] = useState<FormData>(EMPTY_FORM)
-  const videoRef        = useRef<HTMLVideoElement>(null)
+  const [form, setForm] = useState<FormData>(EMPTY)
+  const [mobile, setMobile] = useState(false)
 
+  // Detect mobile viewport
   useEffect(() => {
-    const video  = videoRef.current
-    if (!video) return
-    const target = TIMESTAMPS[step]
-    const doSeek = () => { video.currentTime = target }
-    if (video.readyState >= 2) {
-      doSeek()
-    } else {
-      video.addEventListener('canplay', doSeek, { once: true })
-    }
-    return () => video.removeEventListener('canplay', doSeek)
-  }, [step])
-
-  const next = useCallback(() => setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1)), [])
-  const back = useCallback(() => setStep((s) => Math.max(s - 1, 0)), [])
-
-  const setField = useCallback((key: keyof FormData, value: string) => {
-    setForm((f) => ({ ...f, [key]: value }))
+    const check = () => setMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
   }, [])
 
-  const selectAndNext = useCallback((key: keyof FormData, value: string) => {
-    setForm((f) => ({ ...f, [key]: value }))
-    setTimeout(next, 190)
-  }, [next])
+  // Sync scroll position → step
+  useEffect(() => {
+    const onScroll = () => {
+      const s = Math.round(window.scrollY / window.innerHeight)
+      setStep(Math.min(Math.max(s, 0), 18))
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  const isTextStep = [3, 4, 5, 9, 11, 13].includes(step)
+  const goTo = useCallback((n: number) => {
+    window.scrollTo({ top: Math.max(0, n) * window.innerHeight, behavior: 'smooth' })
+  }, [])
 
-  const canContinue = (): boolean => {
+  const next = useCallback(() => goTo(step + 1), [step, goTo])
+  const back = useCallback(() => goTo(step - 1), [step, goTo])
+
+  const set = useCallback((k: keyof FormData, v: string) => {
+    setForm(f => ({ ...f, [k]: v }))
+  }, [])
+
+  // Select a pill option and auto-advance
+  const pick = useCallback((k: keyof FormData, v: string) => {
+    setForm(f => ({ ...f, [k]: v }))
+    setTimeout(() => goTo(step + 1), 200)
+  }, [step, goTo])
+
+  // Log completed form
+  useEffect(() => {
+    if (step === 18) console.log('AutoLoans form submission:', form)
+  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const canNext = (): boolean => {
     switch (step) {
       case  3: return !!(form.firstName.trim() && form.lastName.trim())
       case  4: return !!form.email.trim()
@@ -642,127 +343,389 @@ export default function FunnelPage() {
     }
   }
 
-  const renderStep = () => {
+  const isTextStep = [3, 4, 5, 9, 11, 13].includes(step)
+  const car  = STEP_CAR[step]
+  const pos  = QPOS[step]
+  const ghost = GHOST[step]
+
+  /* ── Step content renderer ── */
+  const renderContent = (): React.ReactNode => {
     switch (step) {
-      case  0: return <Step0  onNext={next} />
-      case  1: return <Step1  value={form.vehicleType}   onSelect={(v) => selectAndNext('vehicleType',   v)} />
-      case  2: return <Step2  value={form.vehicleBrand}  onSelect={(v) => selectAndNext('vehicleBrand',  v)} />
-      case  3: return <Step3  form={form} onChange={setField} />
-      case  4: return <Step4  value={form.email}         onChange={(v) => setField('email',         v)} />
-      case  5: return <Step5  value={form.phone}         onChange={(v) => setField('phone',         v)} />
-      case  6: return <Step6  value={form.isCanadian}    onSelect={(v) => selectAndNext('isCanadian',    v)} />
-      case  7: return <Step7  value={form.zeroDown}      onSelect={(v) => selectAndNext('zeroDown',      v)} />
-      case  8: return <Step8  value={form.ageRange}      onSelect={(v) => selectAndNext('ageRange',      v)} />
-      case  9: return <Step9  form={form} onChange={setField} />
-      case 10: return <Step10 value={form.employment}    onSelect={(v) => selectAndNext('employment',    v)} />
-      case 11: return <Step11 form={form} onChange={setField} />
-      case 12: return <Step12 value={form.incomeType}    onSelect={(v) => selectAndNext('incomeType',    v)} />
-      case 13: return <Step13 form={form} onChange={setField} />
-      case 14: return <Step14 value={form.housingType}   onSelect={(v) => selectAndNext('housingType',   v)} />
-      case 15: return <Step15 value={form.monthlyBudget} onSelect={(v) => selectAndNext('monthlyBudget', v)} />
-      case 16: return <Step16 value={form.creditScore}   onSelect={(v) => selectAndNext('creditScore',   v)} />
-      case 17: return <Step17 value={form.contactTime}   onSelect={(v) => selectAndNext('contactTime',   v)} />
+
+      /* ── HERO ── */
+      case 0: return (
+        <div className="text-center max-w-2xl mx-auto px-6">
+          <motion.p initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="text-[#c49a00] text-xs font-bold tracking-widest uppercase mb-3"
+          >
+            $0 Down Options Available
+          </motion.p>
+          <motion.h1 initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="font-bold text-[#0a1628] leading-tight mb-3"
+            style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(2.8rem, 7vw, 6rem)' }}
+          >
+            Get Approved<br />For a Vehicle
+          </motion.h1>
+          <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
+            className="text-[#4a5568] text-lg mb-7"
+          >
+            No Matter Your Credit or Situation
+          </motion.p>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.44 }}
+            className="flex flex-wrap justify-center gap-2 mb-8"
+          >
+            {['Bad Credit', 'No Credit', 'Bankruptcy', 'Collections'].map(t => (
+              <span key={t} className="bg-[#0a1628] text-white text-xs px-4 py-1.5 rounded-full">✓ {t}</span>
+            ))}
+          </motion.div>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.56, type: 'spring', stiffness: 200 }}
+            whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(10,22,40,0.22)' }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => goTo(1)}
+            className="bg-[#0a1628] text-white font-bold text-lg px-10 py-4 rounded-full shadow-2xl"
+          >
+            Begin My Journey →
+          </motion.button>
+        </div>
+      )
+
+      case 1: return (
+        <>
+          <QH>What are you looking for?</QH>
+          <div className="flex flex-wrap gap-2">
+            {VTYPES.map((t, i) => <Pill key={t} label={t} sel={form.vehicleType === t} onClick={() => pick('vehicleType', t)} delay={i * 0.05} />)}
+          </div>
+        </>
+      )
+
+      case 2: return (
+        <>
+          <QH>Which brand catches your eye?</QH>
+          <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1 pb-1">
+            {BRANDS.map((b, i) => <Pill key={b} label={b} sel={form.vehicleBrand === b} onClick={() => pick('vehicleBrand', b)} delay={Math.min(i * 0.02, 0.3)} />)}
+          </div>
+        </>
+      )
+
+      case 3: return (
+        <>
+          <QH>What&apos;s your name?</QH>
+          <div className="flex flex-col gap-3 w-full">
+            <Inp ph="First name" val={form.firstName} onChange={v => set('firstName', v)} delay={0.1} />
+            <Inp ph="Last name"  val={form.lastName}  onChange={v => set('lastName',  v)} delay={0.18} />
+          </div>
+          <ContBtn onClick={next} disabled={!canNext()} />
+        </>
+      )
+
+      case 4: return (
+        <>
+          <QH>Your email address?</QH>
+          <Inp ph="you@email.com" val={form.email} onChange={v => set('email', v)} type="email" delay={0.1} />
+          <ContBtn onClick={next} disabled={!canNext()} />
+        </>
+      )
+
+      case 5: return (
+        <>
+          <QH>Best phone number?</QH>
+          <Inp ph="(555) 123-4567" val={form.phone} onChange={v => set('phone', v)} type="tel" delay={0.1} />
+          <ContBtn onClick={next} disabled={!canNext()} />
+        </>
+      )
+
+      case 6: return (
+        <>
+          <QH>Are you a Canadian resident?</QH>
+          <div className="flex gap-3">
+            {['Yes', 'No'].map((v, i) => <Pill key={v} label={v} sel={form.isCanadian === v} onClick={() => pick('isCanadian', v)} delay={i * 0.1} />)}
+          </div>
+        </>
+      )
+
+      case 7: return (
+        <>
+          <QH>Interested in $0 down?</QH>
+          <p className="text-[#6b7280] text-sm -mt-3 mb-4">No down payment required</p>
+          <div className="flex gap-3">
+            {['Yes', 'No'].map((v, i) => <Pill key={v} label={v} sel={form.zeroDown === v} onClick={() => pick('zeroDown', v)} delay={i * 0.1} />)}
+          </div>
+        </>
+      )
+
+      case 8: return (
+        <>
+          <QH>Your age range?</QH>
+          <div className="flex flex-wrap gap-2">
+            {AGES.map((a, i) => <Pill key={a} label={a} sel={form.ageRange === a} onClick={() => pick('ageRange', a)} delay={i * 0.07} />)}
+          </div>
+        </>
+      )
+
+      case 9: return (
+        <>
+          <QH>Where are you located?</QH>
+          <div className="flex flex-col gap-3 w-full">
+            <Inp ph="Street address"              val={form.street}     onChange={v => set('street',     v)} delay={0.08} />
+            <Inp ph="City"                        val={form.city}       onChange={v => set('city',       v)} delay={0.14} />
+            <motion.select
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              value={form.province}
+              onChange={e => set('province', e.target.value)}
+              className="w-full bg-white border border-[#e0d4c0] rounded-xl px-4 py-3 text-[#1a1a1a] focus:outline-none focus:border-[#F5C842] text-sm"
+            >
+              <option value="">Select province…</option>
+              {PROVS.map(p => <option key={p} value={p}>{p}</option>)}
+            </motion.select>
+            <Inp ph="Postal code (e.g. A1B 2C3)"  val={form.postalCode} onChange={v => set('postalCode', v)} delay={0.26} />
+          </div>
+          <ContBtn onClick={next} disabled={!canNext()} />
+        </>
+      )
+
+      case 10: return (
+        <>
+          <QH>How do you earn your income?</QH>
+          <div className="flex flex-wrap gap-2">
+            {EMPLS.map((e, i) => <Pill key={e} label={e} sel={form.employment === e} onClick={() => pick('employment', e)} delay={i * 0.07} />)}
+          </div>
+        </>
+      )
+
+      case 11: return (
+        <>
+          <QH>Tell us about your work</QH>
+          <div className="flex flex-col gap-3 w-full">
+            <Inp ph="Employer name"                  val={form.employerName} onChange={v => set('employerName', v)} delay={0.08} />
+            <Inp ph="Job title"                      val={form.jobTitle}     onChange={v => set('jobTitle',     v)} delay={0.15} />
+            <Inp ph="Time at this job (e.g. 2 yrs)"  val={form.timeAtJob}    onChange={v => set('timeAtJob',    v)} delay={0.22} />
+          </div>
+          <ContBtn onClick={next} disabled={!canNext()} />
+        </>
+      )
+
+      case 12: return (
+        <>
+          <QH>How are you paid?</QH>
+          <div className="flex flex-wrap gap-2">
+            {ITYPES.map((t, i) => <Pill key={t} label={t} sel={form.incomeType === t} onClick={() => pick('incomeType', t)} delay={i * 0.07} />)}
+          </div>
+        </>
+      )
+
+      case 13: return (
+        <>
+          <QH>Monthly income &amp; stability</QH>
+          <div className="flex flex-col gap-3 w-full">
+            <Inp ph="Monthly amount (e.g. $3,500)"    val={form.incomeAmount}    onChange={v => set('incomeAmount',    v)} delay={0.1}  />
+            <Inp ph="How long at this income level?"  val={form.incomeStability} onChange={v => set('incomeStability', v)} delay={0.18} />
+          </div>
+          <ContBtn onClick={next} disabled={!canNext()} />
+        </>
+      )
+
+      case 14: return (
+        <>
+          <QH>Your housing situation?</QH>
+          <div className="flex flex-wrap gap-2">
+            {HOUSE.map((h, i) => <Pill key={h} label={h} sel={form.housingType === h} onClick={() => pick('housingType', h)} delay={i * 0.08} />)}
+          </div>
+        </>
+      )
+
+      case 15: return (
+        <>
+          <QH>Monthly car payment budget?</QH>
+          <div className="flex flex-wrap gap-2">
+            {BUDGET.map((b, i) => <Pill key={b} label={b} sel={form.monthlyBudget === b} onClick={() => pick('monthlyBudget', b)} delay={i * 0.08} />)}
+          </div>
+        </>
+      )
+
+      case 16: return (
+        <>
+          <QH>How&apos;s your credit?</QH>
+          <div className="flex flex-wrap gap-2">
+            {CREDIT.map((c, i) => <Pill key={c} label={c} sel={form.creditScore === c} onClick={() => pick('creditScore', c)} delay={i * 0.08} />)}
+          </div>
+        </>
+      )
+
+      case 17: return (
+        <>
+          <QH>Best time to reach you?</QH>
+          <div className="flex flex-wrap gap-2">
+            {CTIMES.map((t, i) => <Pill key={t} label={t} sel={form.contactTime === t} onClick={() => pick('contactTime', t)} delay={i * 0.1} />)}
+          </div>
+        </>
+      )
+
       case 18: return <Step18 form={form} />
+
       default: return null
     }
   }
 
-  const layout = STEP_LAYOUTS[step]
-
-  const motionStyle: React.CSSProperties = layout.fullOverlay
-    ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }
-    : { position: 'fixed', zIndex: 10, maxWidth: '420px', width: 'calc(100% - 2rem)', ...layout.css }
-
-  const motionBase = { opacity: 0, y: 44, ...(layout.x ? { x: layout.x } : {}) }
-  const motionShow = { opacity: 1, y: 0,  ...(layout.x ? { x: layout.x } : {}) }
-  const motionHide = { opacity: 0, y: -32, ...(layout.x ? { x: layout.x } : {}) }
-
+  /* ══════════════════════════════════════════════════════
+     RENDER
+  ══════════════════════════════════════════════════════ */
   return (
-    <main className="relative w-full h-screen overflow-hidden">
+    /* 1900vh scroll space — each of 19 steps occupies 100vh */
+    <div style={{ height: '1900vh' }}>
 
-      {/* Video — never unmounted, always rendered, position:fixed z-0 */}
-      <video
-        ref={videoRef}
-        autoPlay
-        loop
-        muted
-        playsInline
-        style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
-        src="/videos/sedan.mp4"
-      />
-
-      {/* Warm golden-hour overlay */}
+      {/* Sticky viewport — stays fixed while outer div scrolls */}
       <div
-        style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1,
-          background: 'linear-gradient(to bottom, rgba(20,10,0,0.28) 0%, rgba(10,5,0,0.10) 40%, rgba(20,10,0,0.44) 100%)',
-        }}
-      />
+        className="sticky top-0 h-screen overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #FFFBF5 0%, #FFF3E0 60%, #FFF8ED 100%)' }}
+      >
 
-      {/* Gold progress bar */}
-      {step > 0 && step < 18 && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '3px', zIndex: 20, background: 'rgba(255,255,255,0.1)' }}>
-          <motion.div
-            className="h-full bg-[#F5C842]"
-            animate={{ width: `${(step / 17) * 100}%` }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-            style={{ boxShadow: '0 0 8px rgba(245,200,66,0.6)' }}
-          />
+        {/* ── Ghost text: huge decorative word behind content ── */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" style={{ zIndex: 0 }}>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={ghost}
+              initial={{ opacity: 0, scale: 0.93 }}
+              animate={{ opacity: 0.034, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.07 }}
+              transition={{ duration: 0.7 }}
+              className="font-black text-[#0a1628] whitespace-nowrap"
+              style={{ fontSize: 'clamp(5rem, 22vw, 20rem)', letterSpacing: '-0.03em' }}
+            >
+              {ghost}
+            </motion.span>
+          </AnimatePresence>
         </div>
-      )}
 
-      {/* Back button */}
-      {step > 0 && step < 18 && (
-        <button
-          onClick={back}
-          style={{ position: 'fixed', top: '1.25rem', left: '1rem', zIndex: 20 }}
-          className="text-white/65 hover:text-white text-xs flex items-center gap-1 transition-colors bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20"
-        >
-          &#8592; Back
-        </button>
-      )}
-
-      {/* Step counter */}
-      {step > 0 && step < 18 && (
-        <div
-          style={{ position: 'fixed', top: '1.25rem', right: '1rem', zIndex: 20 }}
-          className="text-white/50 text-xs bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20"
-        >
-          {step} / 17
-        </div>
-      )}
-
-      {/* Floating step content */}
-      <AnimatePresence mode="wait">
+        {/* ── Floating car ── */}
         <motion.div
-          key={step}
-          initial={motionBase}
-          animate={motionShow}
-          exit={motionHide}
-          transition={{ duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] }}
-          style={motionStyle}
+          className="absolute pointer-events-none"
+          style={{ zIndex: 5 }}
+          animate={{ left: car.x, top: car.y, scale: car.sc, rotate: car.r }}
+          transition={{ duration: 0.95, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          {layout.fullOverlay ? (
-            <div
-              className="w-full h-full flex flex-col items-center justify-center"
-              style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.45) 100%)' }}
+          {/* Center on anchor point, then float */}
+          <div style={{ transform: 'translate(-50%, -50%)' }}>
+            <motion.div
+              animate={{ y: [0, -11, 0] }}
+              transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut' }}
             >
-              {renderStep()}
-            </div>
-          ) : (
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={car.img}
+                  src={`/images/${car.img}.png`}
+                  alt="Vehicle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.45 }}
+                  draggable={false}
+                  style={{
+                    width: mobile ? 'clamp(180px, 60vw, 300px)' : 'clamp(300px, 38vw, 580px)',
+                    height: 'auto',
+                    filter: 'drop-shadow(0 40px 80px rgba(0,0,0,0.18)) drop-shadow(0 8px 24px rgba(0,0,0,0.1))',
+                    userSelect: 'none',
+                  }}
+                />
+              </AnimatePresence>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* ── Gold progress bar ── */}
+        {step > 0 && step < 18 && (
+          <div className="fixed top-0 left-0 right-0 z-50" style={{ height: 3, background: '#f0e8d8' }}>
+            <motion.div
+              className="h-full"
+              animate={{ width: `${(step / 17) * 100}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              style={{ background: '#F5C842', boxShadow: '0 0 8px rgba(245,200,66,0.55)' }}
+            />
+          </div>
+        )}
+
+        {/* ── Back button ── */}
+        {step > 0 && step < 18 && (
+          <button
+            onClick={back}
+            className="fixed top-4 left-4 z-50 text-[#6b7280] hover:text-[#0a1628] text-xs flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm transition-colors"
+          >
+            ← Back
+          </button>
+        )}
+
+        {/* ── Step counter ── */}
+        {step > 0 && step < 18 && (
+          <div className="fixed top-4 right-4 z-50 text-[#9a8a7a] text-xs bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm">
+            {step} / 17
+          </div>
+        )}
+
+        {/* ── Question card
+              Full-inset absolute flex container so we avoid CSS transform conflicts.
+              AnimatePresence keys on step so old card fades out before new fades in.
+        ── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.32 }}
+            style={{ ...cardContainer(pos, mobile), zIndex: 20 }}
+          >
             <div
-              className="backdrop-blur-sm rounded-2xl p-5 w-full flex flex-col items-center"
-              style={{ background: 'rgba(0,0,0,0.15)' }}
+              style={{
+                maxWidth: pos === 'center' ? 640 : (mobile ? 'calc(100vw - 2rem)' : 420),
+                width: '100%',
+                pointerEvents: 'auto',
+              }}
             >
-              {renderStep()}
-              {isTextStep && (
-                <NextButton onClick={next} disabled={!canContinue()} />
+              {pos === 'center' ? (
+                /* Hero + success: text sits directly on cream bg, no card */
+                <div className="text-center">
+                  {renderContent()}
+                </div>
+              ) : (
+                /* All other steps: frosted white card */
+                <div
+                  className="rounded-2xl border border-[#e8dfd0] p-6"
+                  style={{
+                    background: 'rgba(255,252,248,0.92)',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.04)',
+                  }}
+                >
+                  {renderContent()}
+                  {isTextStep && (
+                    <p className="text-[#c0b0a0] text-xs mt-3">You can also scroll to advance</p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
 
-    </main>
+        {/* ── Scroll nudge on hero ── */}
+        {step === 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.8 }}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+          >
+            <span className="text-[#9a8a7a] text-xs tracking-wide">scroll to explore</span>
+            <motion.div
+              animate={{ y: [0, 7, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="w-px h-8 rounded-full"
+              style={{ background: 'linear-gradient(to bottom, #9a8a7a, transparent)' }}
+            />
+          </motion.div>
+        )}
+
+      </div>{/* /sticky */}
+    </div>
   )
 }
