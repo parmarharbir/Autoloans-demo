@@ -1,7 +1,15 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useGLTF, Environment, ContactShadows, Html } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import * as THREE from 'three'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
 
 /* ══════════════════════════════════════════════════════
    TYPES
@@ -33,55 +41,33 @@ const EMPTY: FormData = {
   housingType: '', monthlyBudget: '', creditScore: '', contactTime: '',
 }
 
-const STEP_CAR = [
-  { img: 'sedan-hero',     x: '50%', y: '50%', sc: 1.10, r:  0 }, // 0 hero
-  { img: 'sedan-hero',     x: '72%', y: '50%', sc: 0.95, r:  2 }, // 1
-  { img: 'sedan-side',     x: '30%', y: '50%', sc: 0.90, r: -2 }, // 2
-  { img: 'sedan-front',    x: '70%', y: '32%', sc: 0.85, r:  3 }, // 3
-  { img: 'sedan-side',     x: '32%', y: '32%', sc: 0.85, r: -3 }, // 4
-  { img: 'sedan-overhead', x: '50%', y: '24%', sc: 0.95, r:  0 }, // 5
-  { img: 'sedan-rear',     x: '70%', y: '70%', sc: 0.90, r:  2 }, // 6
-  { img: 'sedan-hero',     x: '30%', y: '70%', sc: 0.90, r: -2 }, // 7
-  { img: 'sedan-side',     x: '70%', y: '50%', sc: 1.00, r:  2 }, // 8
-  { img: 'sedan-front',    x: '30%', y: '50%', sc: 0.90, r: -2 }, // 9
-  { img: 'sedan-wheel',    x: '50%', y: '72%', sc: 0.95, r:  0 }, // 10
-  { img: 'sedan-hero',     x: '70%', y: '30%', sc: 0.85, r:  3 }, // 11
-  { img: 'sedan-rear',     x: '30%', y: '30%', sc: 0.85, r: -3 }, // 12
-  { img: 'sedan-interior', x: '50%', y: '48%', sc: 1.00, r:  0 }, // 13
-  { img: 'sedan-side',     x: '70%', y: '50%', sc: 0.90, r:  2 }, // 14
-  { img: 'sedan-overhead', x: '30%', y: '50%', sc: 0.90, r: -2 }, // 15
-  { img: 'sedan-front',    x: '50%', y: '24%', sc: 1.00, r:  0 }, // 16
-  { img: 'sedan-road',     x: '68%', y: '68%', sc: 0.85, r:  3 }, // 17
-  { img: 'sedan-hero',     x: '50%', y: '44%', sc: 1.20, r:  0 }, // 18 success
+const CAM_POSITIONS: [number, number, number][] = [
+  [4, 1.5, 6],    // Step 0: 3/4 front hero
+  [6, 1.2, 2],    // Step 1: side-front angle
+  [-6, 1.2, 2],   // Step 2: opposite side
+  [0, 3, 4],      // Step 3: elevated front
+  [4, 0.8, -5],   // Step 4: rear 3/4
+  [0, 8, 0.1],    // Step 5: top-down overhead
+  [-4, 1.2, -5],  // Step 6: rear opposite
+  [3, 1.5, 5],    // Step 7: classic 3/4 return
+  [6, 0.5, 0],    // Step 8: low side shot
+  [-5, 1.8, 3],   // Step 9: wide side
+  [1, 0.3, 1.5],  // Step 10: wheel level close
+  [4, 2, 4],      // Step 11: elevated 3/4
+  [-3, 1.5, -4],  // Step 12: rear elevated
+  [0, 1.2, 3],    // Step 13: straight front close
+  [5, 1, 2],      // Step 14: side close
+  [-4, 3, 4],     // Step 15: wide elevated
+  [0, 1.5, 5],    // Step 16: straight front
+  [3, 0.8, 3],    // Step 17: driving angle
+  [0, 4, 8],      // Step 18: pull-back reveal
 ]
 
 const QPOS: QPos[] = [
-  'center',    // 0 hero
-  'left',      // 1
-  'right',     // 2
-  'bot-left',  // 3
-  'bot-right', // 4
-  'bottom',    // 5
-  'top-left',  // 6
-  'top-right', // 7
-  'left',      // 8
-  'right',     // 9
-  'top',       // 10
-  'bot-left',  // 11
-  'bot-right', // 12
-  'bottom',    // 13
-  'left',      // 14
-  'right',     // 15
-  'bottom',    // 16
-  'top-left',  // 17
-  'center',    // 18 success
-]
-
-const GHOST = [
-  'DRIVE',    'CHOOSE', 'BRAND',  'NAME',   'EMAIL',
-  'PHONE',    'CANADA', 'DOWN',   'AGE',    'HOME',
-  'EARN',     'WORK',   'PAY',    'INCOME', 'LIVE',
-  'BUDGET',   'CREDIT', 'CALL',   'APPROVE',
+  'center', 'left', 'right', 'bot-left', 'bot-right',
+  'bottom', 'top-left', 'top-right', 'left', 'right',
+  'top', 'bot-left', 'bot-right', 'bottom', 'left',
+  'right', 'bottom', 'top-left', 'center',
 ]
 
 const VTYPES  = ['Sedan', 'SUV', 'Truck', 'Van', 'Coupe', 'Convertible', 'Electric', 'Other']
@@ -94,6 +80,10 @@ const HOUSE   = ['Own', 'Rent', 'Live with family', 'Other']
 const BUDGET  = ['Under $300', '$300–$400', '$400–$500', '$500–$700', '$700+']
 const CREDIT  = ['Excellent 750+', 'Good 700–749', 'Fair 650–699', 'Poor 600–649', 'Bad below 600', 'Not sure']
 const CTIMES  = ['Morning', 'Afternoon', 'Evening', 'Anytime']
+
+const TOTAL_STEPS = 19
+const PX_PER_STEP = 300
+const TOTAL_HEIGHT = TOTAL_STEPS * PX_PER_STEP
 
 /* ══════════════════════════════════════════════════════
    POSITION HELPER
@@ -206,6 +196,135 @@ function ContBtn({ onClick, disabled }: { onClick: () => void; disabled?: boolea
 }
 
 /* ══════════════════════════════════════════════════════
+   3D SCENE — FERRARI + ENVIRONMENT
+══════════════════════════════════════════════════════ */
+
+function FerrariModel() {
+  const { scene } = useGLTF('https://threejs.org/examples/models/gltf/ferrari.glb')
+  const bodyMat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#c0392b',
+    metalness: 0.9,
+    roughness: 0.1,
+    envMapIntensity: 1.5,
+  }), [])
+
+  useEffect(() => {
+    scene.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return
+      child.castShadow = true
+      child.receiveShadow = true
+      // Apply red to body parts; keep glass transparent
+      if (child.name === 'body') {
+        child.material = bodyMat
+      }
+    })
+  }, [scene, bodyMat])
+
+  // Slow idle rotation
+  const groupRef = useRef<THREE.Group>(null)
+  useFrame(({ clock }) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = Math.sin(clock.getElapsedTime() * 0.12) * 0.08
+    }
+  })
+
+  return (
+    <group ref={groupRef} position={[0, -0.4, 0]}>
+      <primitive object={scene} scale={1} />
+    </group>
+  )
+}
+
+// Preload for fast load
+useGLTF.preload('https://threejs.org/examples/models/gltf/ferrari.glb')
+
+interface CameraRigProps {
+  camTarget: React.MutableRefObject<THREE.Vector3>
+}
+
+function CameraRig({ camTarget }: CameraRigProps) {
+  const { camera } = useThree()
+  const lookTarget = useMemo(() => new THREE.Vector3(0, 0.2, 0), [])
+
+  useFrame(() => {
+    camera.position.lerp(camTarget.current, 0.06)
+    camera.lookAt(lookTarget)
+  })
+
+  return null
+}
+
+interface Scene3DProps {
+  camTarget: React.MutableRefObject<THREE.Vector3>
+}
+
+function Scene3D({ camTarget }: Scene3DProps) {
+  return (
+    <>
+      <fog attach="fog" args={['#FFF8F0', 15, 40]} />
+      <color attach="background" args={['#FFF8F0']} />
+
+      <Environment preset="sunset" />
+
+      <Suspense fallback={null}>
+        <FerrariModel />
+      </Suspense>
+
+      <ContactShadows
+        position={[0, -0.4, 0]}
+        opacity={0.8}
+        blur={2.5}
+        far={4}
+        resolution={512}
+      />
+
+      <CameraRig camTarget={camTarget} />
+
+      <EffectComposer>
+        <Bloom threshold={0.8} strength={0.3} radius={0.4} />
+        <Vignette eskil={false} offset={0.1} darkness={0.6} />
+      </EffectComposer>
+    </>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
+   PROGRESS BAR
+══════════════════════════════════════════════════════ */
+
+function ProgressBar({ step }: { step: number }) {
+  const pct = ((step) / (TOTAL_STEPS - 1)) * 100
+  return (
+    <div className="fixed top-0 left-0 right-0 h-[3px] z-50 bg-transparent">
+      <motion.div
+        className="h-full bg-gradient-to-r from-[#F5C842] to-[#F5A800]"
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      />
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
+   STEP CARD WRAPPER
+══════════════════════════════════════════════════════ */
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      transition={{ duration: 0.4 }}
+      className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-[#e8dfd0] p-7 w-full max-w-sm pointer-events-auto"
+      style={{ boxShadow: '0 20px 60px rgba(10,22,40,0.12), 0 4px 16px rgba(10,22,40,0.08)' }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
    SUCCESS STEP (step 18)
 ══════════════════════════════════════════════════════ */
 
@@ -231,7 +350,6 @@ function Step18({ form }: { form: FormData }) {
 
   return (
     <div className="text-center w-full px-4">
-      {/* Confetti */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-30">
         {pieces.map(c => (
           <div key={c.id} className="absolute rounded-sm" style={{
@@ -284,6 +402,308 @@ function Step18({ form }: { form: FormData }) {
 }
 
 /* ══════════════════════════════════════════════════════
+   FORM OVERLAY — ALL 19 STEPS
+══════════════════════════════════════════════════════ */
+
+interface OverlayProps {
+  step: number
+  form: FormData
+  set: (k: keyof FormData, v: string) => void
+  next: () => void
+  mobile: boolean
+}
+
+function FormOverlay({ step, form, set, next, mobile }: OverlayProps) {
+  const pos = QPOS[step]
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
+      <AnimatePresence mode="wait">
+        <div key={step} style={cardContainer(pos, mobile)}>
+          {step === 0 && (
+            <Card>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                className="flex items-center gap-2 mb-4"
+              >
+                <div className="w-2 h-2 rounded-full bg-[#F5C842]" />
+                <span className="text-xs text-[#9a8a7a] font-medium tracking-widest uppercase">AutoLoans.ca</span>
+              </motion.div>
+              <motion.h1 initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                className="font-bold text-[#0a1628] leading-tight mb-3"
+                style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(1.8rem, 4vw, 3rem)' }}
+              >
+                Get Approved For a Vehicle
+              </motion.h1>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.28 }}
+                className="text-[#6b7280] text-sm mb-5 leading-relaxed"
+              >
+                Bad credit, no credit — we work with 30+ lenders to get you behind the wheel.
+              </motion.p>
+              <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.36 }}
+                className="space-y-1.5 mb-6 text-sm text-[#3a3a3a]"
+              >
+                {['2-minute application', 'No impact on credit score', 'All provinces accepted', 'Instant pre-approval'].map(t => (
+                  <li key={t} className="flex items-center gap-2">
+                    <span className="text-[#F5C842] font-bold">✓</span> {t}
+                  </li>
+                ))}
+              </motion.ul>
+              <motion.button
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.44 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                onClick={next}
+                className="w-full py-3.5 rounded-full bg-[#0a1628] text-white font-semibold text-sm shadow-lg hover:bg-[#162238] transition-colors pointer-events-auto"
+              >
+                Begin My Journey →
+              </motion.button>
+            </Card>
+          )}
+
+          {step === 1 && (
+            <Card>
+              <QH>What are you looking for?</QH>
+              <div className="flex flex-wrap gap-2">
+                {VTYPES.map((v, i) => (
+                  <Pill key={v} label={v} sel={form.vehicleType === v}
+                    onClick={() => { set('vehicleType', v); setTimeout(next, 260) }} delay={i * 0.04} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 2 && (
+            <Card>
+              <QH>Which brand?</QH>
+              <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1">
+                {BRANDS.map((b, i) => (
+                  <Pill key={b} label={b} sel={form.vehicleBrand === b}
+                    onClick={() => { set('vehicleBrand', b); setTimeout(next, 260) }} delay={i * 0.02} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 3 && (
+            <Card>
+              <QH>What is your name?</QH>
+              <div className="space-y-3">
+                <Inp ph="First name" val={form.firstName} onChange={v => set('firstName', v)} delay={0.05} />
+                <Inp ph="Last name" val={form.lastName} onChange={v => set('lastName', v)} delay={0.1} />
+              </div>
+              <ContBtn onClick={next} disabled={!form.firstName || !form.lastName} />
+            </Card>
+          )}
+
+          {step === 4 && (
+            <Card>
+              <QH>Your email address?</QH>
+              <Inp ph="you@example.com" type="email" val={form.email} onChange={v => set('email', v)} delay={0.05} />
+              <ContBtn onClick={next} disabled={!form.email.includes('@')} />
+            </Card>
+          )}
+
+          {step === 5 && (
+            <Card>
+              <QH>Best phone number?</QH>
+              <Inp ph="(xxx) xxx-xxxx" type="tel" val={form.phone} onChange={v => set('phone', v)} delay={0.05} />
+              <ContBtn onClick={next} disabled={form.phone.length < 10} />
+            </Card>
+          )}
+
+          {step === 6 && (
+            <Card>
+              <QH>Are you a Canadian resident?</QH>
+              <div className="flex gap-3">
+                {['Yes', 'No'].map((v, i) => (
+                  <Pill key={v} label={v} sel={form.isCanadian === v}
+                    onClick={() => { set('isCanadian', v); setTimeout(next, 260) }} delay={i * 0.08} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 7 && (
+            <Card>
+              <QH>Interested in $0 down?</QH>
+              <div className="flex gap-3">
+                {['Yes', 'No'].map((v, i) => (
+                  <Pill key={v} label={v} sel={form.zeroDown === v}
+                    onClick={() => { set('zeroDown', v); setTimeout(next, 260) }} delay={i * 0.08} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 8 && (
+            <Card>
+              <QH>Your age range?</QH>
+              <div className="flex flex-wrap gap-2">
+                {AGES.map((a, i) => (
+                  <Pill key={a} label={a} sel={form.ageRange === a}
+                    onClick={() => { set('ageRange', a); setTimeout(next, 260) }} delay={i * 0.06} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 9 && (
+            <Card>
+              <QH>Where are you located?</QH>
+              <div className="space-y-3">
+                <Inp ph="Street address" val={form.street} onChange={v => set('street', v)} delay={0.05} />
+                <Inp ph="City" val={form.city} onChange={v => set('city', v)} delay={0.1} />
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <select
+                      value={form.province}
+                      onChange={e => set('province', e.target.value)}
+                      className="w-full bg-white border border-[#e0d4c0] rounded-xl px-3 py-3 text-sm text-[#1a1a1a] focus:outline-none focus:border-[#F5C842] pointer-events-auto"
+                    >
+                      <option value="">Province</option>
+                      {PROVS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="w-28">
+                    <Inp ph="Postal Code" val={form.postalCode} onChange={v => set('postalCode', v)} delay={0.15} />
+                  </div>
+                </div>
+              </div>
+              <ContBtn onClick={next} disabled={!form.city || !form.province} />
+            </Card>
+          )}
+
+          {step === 10 && (
+            <Card>
+              <QH>How do you earn your income?</QH>
+              <div className="flex flex-wrap gap-2">
+                {EMPLS.map((e, i) => (
+                  <Pill key={e} label={e} sel={form.employment === e}
+                    onClick={() => { set('employment', e); setTimeout(next, 260) }} delay={i * 0.06} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 11 && (
+            <Card>
+              <QH>Tell us about your work</QH>
+              <div className="space-y-3">
+                <Inp ph="Employer / Business name" val={form.employerName} onChange={v => set('employerName', v)} delay={0.05} />
+                <Inp ph="Job title" val={form.jobTitle} onChange={v => set('jobTitle', v)} delay={0.1} />
+                <Inp ph="Time at this job (e.g. 2 years)" val={form.timeAtJob} onChange={v => set('timeAtJob', v)} delay={0.15} />
+              </div>
+              <ContBtn onClick={next} disabled={!form.employerName} />
+            </Card>
+          )}
+
+          {step === 12 && (
+            <Card>
+              <QH>How are you paid?</QH>
+              <div className="flex flex-wrap gap-2">
+                {ITYPES.map((t, i) => (
+                  <Pill key={t} label={t} sel={form.incomeType === t}
+                    onClick={() => { set('incomeType', t); setTimeout(next, 260) }} delay={i * 0.05} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 13 && (
+            <Card>
+              <QH>Monthly income + stability</QH>
+              <div className="space-y-3">
+                <Inp ph="Monthly income (e.g. $3,500)" val={form.incomeAmount} onChange={v => set('incomeAmount', v)} delay={0.05} />
+                <Inp ph="Income stability (e.g. Full-time, Part-time)" val={form.incomeStability} onChange={v => set('incomeStability', v)} delay={0.1} />
+              </div>
+              <ContBtn onClick={next} disabled={!form.incomeAmount} />
+            </Card>
+          )}
+
+          {step === 14 && (
+            <Card>
+              <QH>Your housing situation?</QH>
+              <div className="flex flex-wrap gap-2">
+                {HOUSE.map((h, i) => (
+                  <Pill key={h} label={h} sel={form.housingType === h}
+                    onClick={() => { set('housingType', h); setTimeout(next, 260) }} delay={i * 0.07} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 15 && (
+            <Card>
+              <QH>Monthly car payment budget?</QH>
+              <div className="flex flex-wrap gap-2">
+                {BUDGET.map((b, i) => (
+                  <Pill key={b} label={b} sel={form.monthlyBudget === b}
+                    onClick={() => { set('monthlyBudget', b); setTimeout(next, 260) }} delay={i * 0.06} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 16 && (
+            <Card>
+              <QH>How is your credit?</QH>
+              <div className="flex flex-wrap gap-2">
+                {CREDIT.map((c, i) => (
+                  <Pill key={c} label={c} sel={form.creditScore === c}
+                    onClick={() => { set('creditScore', c); setTimeout(next, 260) }} delay={i * 0.05} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 17 && (
+            <Card>
+              <QH>Best time to reach you?</QH>
+              <div className="flex flex-wrap gap-2">
+                {CTIMES.map((t, i) => (
+                  <Pill key={t} label={t} sel={form.contactTime === t}
+                    onClick={() => { set('contactTime', t); setTimeout(next, 260) }} delay={i * 0.07} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {step === 18 && (
+            <Card>
+              <Step18 form={form} />
+            </Card>
+          )}
+        </div>
+      </AnimatePresence>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
+   MOBILE FALLBACK SCENE
+══════════════════════════════════════════════════════ */
+
+function MobileBackground({ step }: { step: number }) {
+  return (
+    <div className="absolute inset-0 bg-gradient-to-br from-[#FFF8F0] via-[#FFEFD0] to-[#F5E6C8]">
+      {/* Static car silhouette bg gradient */}
+      <div
+        className="absolute inset-0 opacity-20"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 60%, #F5C842 0%, transparent 70%)',
+        }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/sedan-hero.png"
+        alt="Vehicle"
+        className="absolute bottom-[30vh] left-1/2 -translate-x-1/2 w-[90vw] max-w-sm object-contain opacity-70 transition-opacity duration-500"
+        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+      />
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
    MAIN PAGE
 ══════════════════════════════════════════════════════ */
 
@@ -292,6 +712,10 @@ export default function FunnelPage() {
   const [form, setForm] = useState<FormData>(EMPTY)
   const [mobile, setMobile] = useState(false)
 
+  const scrollWrapRef = useRef<HTMLDivElement>(null)
+  const camTarget = useRef(new THREE.Vector3(4, 1.5, 6))
+
+  // Detect mobile
   useEffect(() => {
     const check = () => setMobile(window.innerWidth < 640)
     check()
@@ -299,417 +723,167 @@ export default function FunnelPage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  const next = useCallback(() => setStep(s => Math.min(s + 1, 18)), [])
-  const back = useCallback(() => setStep(s => Math.max(s - 1, 0)), [])
+  // GSAP ScrollTrigger — camera orbit
+  useEffect(() => {
+    if (mobile) return
+    const el = scrollWrapRef.current
+    if (!el) return
+
+    const trigger = ScrollTrigger.create({
+      trigger: el,
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: true,
+      onUpdate: (self) => {
+        const progress = self.progress
+        const stepF = progress * (TOTAL_STEPS - 1)
+        const idx = Math.min(Math.floor(stepF), TOTAL_STEPS - 2)
+        const t = stepF - idx
+
+        const from = CAM_POSITIONS[idx]
+        const to = CAM_POSITIONS[idx + 1]
+
+        camTarget.current.set(
+          from[0] + (to[0] - from[0]) * t,
+          from[1] + (to[1] - from[1]) * t,
+          from[2] + (to[2] - from[2]) * t,
+        )
+
+        const newStep = Math.round(stepF)
+        setStep(prev => prev !== newStep ? newStep : prev)
+      },
+    })
+
+    return () => { trigger.kill() }
+  }, [mobile])
 
   const set = useCallback((k: keyof FormData, v: string) => {
-    setForm(f => ({ ...f, [k]: v }))
+    setForm(prev => ({ ...prev, [k]: v }))
   }, [])
 
-  const pick = useCallback((k: keyof FormData, v: string) => {
-    setForm(f => ({ ...f, [k]: v }))
-    setTimeout(() => setStep(s => Math.min(s + 1, 18)), 220)
-  }, [])
-
-  useEffect(() => {
-    if (step === 18) console.log('AutoLoans form submission:', form)
-  }, [step]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const canNext = (): boolean => {
-    switch (step) {
-      case  3: return !!(form.firstName.trim() && form.lastName.trim())
-      case  4: return !!form.email.trim()
-      case  5: return !!form.phone.trim()
-      case  9: return !!(form.street.trim() && form.city.trim() && form.province)
-      case 11: return !!form.employerName.trim()
-      case 13: return !!form.incomeAmount.trim()
-      default: return true
+  // On mobile, next scrolls to the next step
+  const next = useCallback(() => {
+    if (mobile) {
+      setStep(prev => Math.min(prev + 1, TOTAL_STEPS - 1))
+      return
     }
-  }
+    // On desktop, scroll to next step's position
+    const nextStep = Math.min(step + 1, TOTAL_STEPS - 1)
+    const targetScroll = (nextStep / (TOTAL_STEPS - 1)) * TOTAL_HEIGHT
+    window.scrollTo({ top: targetScroll, behavior: 'smooth' })
+  }, [mobile, step])
 
-  const car   = STEP_CAR[step]
-  const pos   = QPOS[step]
-  const ghost = GHOST[step]
-
-  /* ── Step content renderer ── */
-  const renderContent = (): React.ReactNode => {
-    switch (step) {
-
-      /* ── HERO ── */
-      case 0: return (
-        <div className="text-center max-w-2xl mx-auto px-6">
-          <motion.p initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="text-[#c49a00] text-xs font-bold tracking-widest uppercase mb-3"
-          >
-            Canada&apos;s Trusted Auto Loan Network
-          </motion.p>
-          <motion.h1 initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="font-bold text-[#0a1628] leading-tight mb-2"
-            style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: 'clamp(2.8rem, 7vw, 5.5rem)' }}
-          >
-            Get Approved<br />For a Vehicle
-          </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="text-[#4a5568] text-xl mb-1"
-          >
-            No Matter Your Credit / Situation
-          </motion.p>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38 }}
-            className="text-[#c49a00] mb-6"
-            style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 'clamp(1rem, 2vw, 1.25rem)' }}
-          >
-            $0 Down Options Available
-          </motion.p>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.48 }}
-            className="flex flex-wrap justify-center gap-2 mb-8"
-          >
-            {['Bad Credit', 'No Credit', 'Bankruptcy', 'Collections', 'Divorce'].map(t => (
-              <span key={t} className="bg-[#0a1628] text-white text-xs px-4 py-1.5 rounded-full">✓ {t}</span>
-            ))}
-          </motion.div>
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.6, type: 'spring', stiffness: 200 }}
-            whileHover={{ scale: 1.06, boxShadow: '0 12px 40px rgba(10,22,40,0.22)' }}
-            whileTap={{ scale: 0.97 }}
-            onClick={next}
-            className="bg-[#0a1628] text-white font-bold text-lg px-10 py-4 rounded-full shadow-2xl"
-          >
-            Begin My Journey →
-          </motion.button>
+  /* ── MOBILE LAYOUT ── */
+  if (mobile) {
+    return (
+      <div className="relative min-h-screen bg-[#FFF8F0]">
+        <ProgressBar step={step} />
+        <MobileBackground step={step} />
+        <div style={{ position: 'relative', zIndex: 20, minHeight: '100vh', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 48px' }}>
+          <AnimatePresence mode="wait">
+            <div key={step} style={{ width: '100%', maxWidth: 400, pointerEvents: 'auto' }}>
+              {step === 0 && (
+                <Card>
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                    className="flex items-center gap-2 mb-4"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-[#F5C842]" />
+                    <span className="text-xs text-[#9a8a7a] font-medium tracking-widest uppercase">AutoLoans.ca</span>
+                  </motion.div>
+                  <motion.h1 initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                    className="font-bold text-[#0a1628] leading-tight mb-3"
+                    style={{ fontFamily: 'var(--font-playfair), Georgia, serif', fontSize: '2rem' }}
+                  >
+                    Get Approved For a Vehicle
+                  </motion.h1>
+                  <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                    className="space-y-1.5 mb-6 text-sm text-[#3a3a3a]"
+                  >
+                    {['2-minute application', 'No credit impact', 'All provinces accepted'].map(t => (
+                      <li key={t} className="flex items-center gap-2">
+                        <span className="text-[#F5C842] font-bold">✓</span> {t}
+                      </li>
+                    ))}
+                  </motion.ul>
+                  <motion.button
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    onClick={next}
+                    className="w-full py-3.5 rounded-full bg-[#0a1628] text-white font-semibold text-sm shadow-lg pointer-events-auto"
+                  >
+                    Begin My Journey →
+                  </motion.button>
+                </Card>
+              )}
+              {step !== 0 && (
+                <FormOverlay step={step} form={form} set={set} next={next} mobile={true} />
+              )}
+            </div>
+          </AnimatePresence>
         </div>
-      )
-
-      case 1: return (
-        <>
-          <QH>What are you looking for?</QH>
-          <div className="flex flex-wrap gap-2">
-            {VTYPES.map((t, i) => <Pill key={t} label={t} sel={form.vehicleType === t} onClick={() => pick('vehicleType', t)} delay={i * 0.05} />)}
-          </div>
-        </>
-      )
-
-      case 2: return (
-        <>
-          <QH>Which brand?</QH>
-          <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pr-1 pb-1">
-            {BRANDS.map((b, i) => <Pill key={b} label={b} sel={form.vehicleBrand === b} onClick={() => pick('vehicleBrand', b)} delay={Math.min(i * 0.02, 0.3)} />)}
-          </div>
-        </>
-      )
-
-      case 3: return (
-        <>
-          <QH>What is your name?</QH>
-          <div className="flex flex-col gap-3 w-full">
-            <Inp ph="First name" val={form.firstName} onChange={v => set('firstName', v)} delay={0.1} />
-            <Inp ph="Last name"  val={form.lastName}  onChange={v => set('lastName',  v)} delay={0.18} />
-          </div>
-          <ContBtn onClick={next} disabled={!canNext()} />
-        </>
-      )
-
-      case 4: return (
-        <>
-          <QH>Your email address?</QH>
-          <Inp ph="you@email.com" val={form.email} onChange={v => set('email', v)} type="email" delay={0.1} />
-          <ContBtn onClick={next} disabled={!canNext()} />
-        </>
-      )
-
-      case 5: return (
-        <>
-          <QH>Best phone number?</QH>
-          <Inp ph="(555) 123-4567" val={form.phone} onChange={v => set('phone', v)} type="tel" delay={0.1} />
-          <ContBtn onClick={next} disabled={!canNext()} />
-        </>
-      )
-
-      case 6: return (
-        <>
-          <QH>Are you a Canadian resident?</QH>
-          <div className="flex gap-3">
-            {['Yes', 'No'].map((v, i) => <Pill key={v} label={v} sel={form.isCanadian === v} onClick={() => pick('isCanadian', v)} delay={i * 0.1} />)}
-          </div>
-        </>
-      )
-
-      case 7: return (
-        <>
-          <QH>Interested in $0 down?</QH>
-          <p className="text-[#6b7280] text-sm -mt-3 mb-4">No down payment required to get started</p>
-          <div className="flex gap-3">
-            {['Yes', 'No'].map((v, i) => <Pill key={v} label={v} sel={form.zeroDown === v} onClick={() => pick('zeroDown', v)} delay={i * 0.1} />)}
-          </div>
-        </>
-      )
-
-      case 8: return (
-        <>
-          <QH>Your age range?</QH>
-          <div className="flex flex-wrap gap-2">
-            {AGES.map((a, i) => <Pill key={a} label={a} sel={form.ageRange === a} onClick={() => pick('ageRange', a)} delay={i * 0.07} />)}
-          </div>
-        </>
-      )
-
-      case 9: return (
-        <>
-          <QH>Where are you located?</QH>
-          <div className="flex flex-col gap-3 w-full">
-            <Inp ph="Street address"             val={form.street}     onChange={v => set('street',     v)} delay={0.08} />
-            <Inp ph="City"                       val={form.city}       onChange={v => set('city',       v)} delay={0.14} />
-            <motion.select
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-              value={form.province}
-              onChange={e => set('province', e.target.value)}
-              className="w-full bg-white border border-[#e0d4c0] rounded-xl px-4 py-3 text-[#1a1a1a] focus:outline-none focus:border-[#F5C842] text-sm"
-            >
-              <option value="">Select province…</option>
-              {PROVS.map(p => <option key={p} value={p}>{p}</option>)}
-            </motion.select>
-            <Inp ph="Postal code (e.g. A1B 2C3)" val={form.postalCode} onChange={v => set('postalCode', v)} delay={0.26} />
-          </div>
-          <ContBtn onClick={next} disabled={!canNext()} />
-        </>
-      )
-
-      case 10: return (
-        <>
-          <QH>How do you earn your income?</QH>
-          <div className="flex flex-wrap gap-2">
-            {EMPLS.map((e, i) => <Pill key={e} label={e} sel={form.employment === e} onClick={() => pick('employment', e)} delay={i * 0.07} />)}
-          </div>
-        </>
-      )
-
-      case 11: return (
-        <>
-          <QH>Tell us about your work</QH>
-          <div className="flex flex-col gap-3 w-full">
-            <Inp ph="Employer name"                 val={form.employerName} onChange={v => set('employerName', v)} delay={0.08} />
-            <Inp ph="Job title"                     val={form.jobTitle}     onChange={v => set('jobTitle',     v)} delay={0.15} />
-            <Inp ph="Time at this job (e.g. 2 yrs)" val={form.timeAtJob}    onChange={v => set('timeAtJob',    v)} delay={0.22} />
-          </div>
-          <ContBtn onClick={next} disabled={!canNext()} />
-        </>
-      )
-
-      case 12: return (
-        <>
-          <QH>How are you paid?</QH>
-          <div className="flex flex-wrap gap-2">
-            {ITYPES.map((t, i) => <Pill key={t} label={t} sel={form.incomeType === t} onClick={() => pick('incomeType', t)} delay={i * 0.07} />)}
-          </div>
-        </>
-      )
-
-      case 13: return (
-        <>
-          <QH>Monthly income?</QH>
-          <div className="flex flex-col gap-3 w-full">
-            <Inp ph="Monthly amount (e.g. $3,500)"  val={form.incomeAmount}    onChange={v => set('incomeAmount',    v)} delay={0.1}  />
-            <Inp ph="How long at this income level?" val={form.incomeStability} onChange={v => set('incomeStability', v)} delay={0.18} />
-          </div>
-          <ContBtn onClick={next} disabled={!canNext()} />
-        </>
-      )
-
-      case 14: return (
-        <>
-          <QH>Your housing situation?</QH>
-          <div className="flex flex-wrap gap-2">
-            {HOUSE.map((h, i) => <Pill key={h} label={h} sel={form.housingType === h} onClick={() => pick('housingType', h)} delay={i * 0.08} />)}
-          </div>
-        </>
-      )
-
-      case 15: return (
-        <>
-          <QH>Monthly car payment budget?</QH>
-          <div className="flex flex-wrap gap-2">
-            {BUDGET.map((b, i) => <Pill key={b} label={b} sel={form.monthlyBudget === b} onClick={() => pick('monthlyBudget', b)} delay={i * 0.08} />)}
-          </div>
-        </>
-      )
-
-      case 16: return (
-        <>
-          <QH>How is your credit?</QH>
-          <div className="flex flex-wrap gap-2">
-            {CREDIT.map((c, i) => <Pill key={c} label={c} sel={form.creditScore === c} onClick={() => pick('creditScore', c)} delay={i * 0.08} />)}
-          </div>
-        </>
-      )
-
-      case 17: return (
-        <>
-          <QH>Best time to reach you?</QH>
-          <div className="flex flex-wrap gap-2">
-            {CTIMES.map((t, i) => <Pill key={t} label={t} sel={form.contactTime === t} onClick={() => pick('contactTime', t)} delay={i * 0.1} />)}
-          </div>
-        </>
-      )
-
-      case 18: return <Step18 form={form} />
-
-      default: return null
-    }
-  }
-
-  /* ══════════════════════════════════════════════════════
-     RENDER
-  ══════════════════════════════════════════════════════ */
-  return (
-    <div
-      className="fixed inset-0 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #FFFBF5 0%, #FFF3E0 60%, #FFF8ED 100%)' }}
-    >
-
-      {/* Step 18: full-bleed overhead background + golden overlay */}
-      <AnimatePresence>
-        {step === 18 && (
-          <motion.div
-            key="success-bg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-0"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/sedan-overhead.png"
-              alt=""
-              className="w-full h-full object-cover"
-              style={{ filter: 'brightness(0.9) saturate(1.2)' }}
-            />
-            <div className="absolute inset-0" style={{ background: 'rgba(245,200,66,0.15)' }} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Ghost text ── */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden" style={{ zIndex: 1 }}>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={ghost}
-            initial={{ opacity: 0, scale: 0.93 }}
-            animate={{ opacity: step === 18 ? 0 : 0.04, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.07 }}
-            transition={{ duration: 0.7 }}
-            className="font-black text-[#0a1628] whitespace-nowrap"
-            style={{ fontSize: 'clamp(5rem, 22vw, 20rem)', letterSpacing: '-0.03em' }}
-          >
-            {ghost}
-          </motion.span>
-        </AnimatePresence>
       </div>
+    )
+  }
 
-      {/* ── Floating car ── */}
-      <motion.div
-        className="absolute pointer-events-none"
-        style={{ zIndex: 5 }}
-        animate={{ left: car.x, top: car.y, scale: car.sc, rotate: car.r }}
-        transition={{ duration: 0.95, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-        <div style={{ transform: 'translate(-50%, -50%)' }}>
-          {/* Hero: gentle infinite bob; other steps: no extra animation */}
-          <motion.div
-            animate={step === 0 ? { y: [0, -12, 0] } : { y: 0 }}
-            transition={
-              step === 0
-                ? { duration: 4.5, repeat: Infinity, ease: 'easeInOut' }
-                : { duration: 0.5 }
-            }
-          >
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={car.img}
-                src={`/images/${car.img}.png`}
-                alt="2024 Hyundai Sonata N-Line"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.45 }}
-                draggable={false}
-                style={{
-                  width: mobile ? 'clamp(180px, 60vw, 300px)' : 'clamp(300px, 38vw, 580px)',
-                  height: 'auto',
-                  filter: 'drop-shadow(0 30px 60px rgba(0,0,0,0.35))',
-                  userSelect: 'none',
-                }}
+  /* ── DESKTOP LAYOUT: tall scroll + sticky canvas ── */
+  return (
+    <div ref={scrollWrapRef} style={{ height: TOTAL_HEIGHT, position: 'relative' }}>
+      <ProgressBar step={step} />
+
+      {/* Sticky viewport */}
+      <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
+
+        {/* R3F Canvas */}
+        <Canvas
+          camera={{ position: [4, 1.5, 6], fov: 45 }}
+          gl={{ antialias: true, alpha: false }}
+          shadows
+          style={{ position: 'absolute', inset: 0 }}
+          dpr={[1, 1.5]}
+        >
+          <Scene3D camTarget={camTarget} />
+        </Canvas>
+
+        {/* Step counter ghost text */}
+        <div style={{
+          position: 'absolute', bottom: '2vh', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 15, pointerEvents: 'none',
+          color: 'rgba(10,22,40,0.12)',
+          fontSize: 'clamp(5rem, 15vw, 12rem)',
+          fontFamily: 'var(--font-playfair), Georgia, serif',
+          fontWeight: 900,
+          letterSpacing: '-0.05em',
+          userSelect: 'none',
+          lineHeight: 1,
+        }}>
+          {['DRIVE','CHOOSE','BRAND','NAME','EMAIL','PHONE','CANADA','DOWN','AGE','HOME',
+            'EARN','WORK','PAY','INCOME','LIVE','BUDGET','CREDIT','CALL','APPROVE'][step]}
+        </div>
+
+        {/* Scroll hint on step 0 */}
+        <AnimatePresence>
+          {step === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{
+                position: 'absolute', bottom: '4vh', right: '4vw',
+                zIndex: 25, pointerEvents: 'none',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: '#9a8a7a', textTransform: 'uppercase' }}>Scroll</span>
+              <motion.div
+                animate={{ y: [0, 6, 0] }}
+                transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                style={{ width: 1, height: 32, background: 'linear-gradient(to bottom, #F5C842, transparent)' }}
               />
-            </AnimatePresence>
-          </motion.div>
-        </div>
-      </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* ── Gold progress bar ── */}
-      {step > 0 && step < 18 && (
-        <div className="fixed top-0 left-0 right-0 z-50" style={{ height: 3, background: '#f0e8d8' }}>
-          <motion.div
-            className="h-full"
-            animate={{ width: `${(step / 17) * 100}%` }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
-            style={{ background: '#F5C842', boxShadow: '0 0 8px rgba(245,200,66,0.55)' }}
-          />
-        </div>
-      )}
-
-      {/* ── Back button ── */}
-      {step > 0 && step < 18 && (
-        <button
-          onClick={back}
-          className="fixed top-4 left-4 z-50 text-[#6b7280] hover:text-[#0a1628] text-xs flex items-center gap-1 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm transition-colors"
-        >
-          ← Back
-        </button>
-      )}
-
-      {/* ── Step counter ── */}
-      {step > 0 && step < 18 && (
-        <div className="fixed top-4 right-4 z-50 text-[#9a8a7a] text-xs bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#e0d4c0] shadow-sm">
-          {step} / 17
-        </div>
-      )}
-
-      {/* ── Question card ── */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.32 }}
-          style={{ ...cardContainer(pos, mobile), zIndex: 20 }}
-        >
-          <div
-            style={{
-              maxWidth: pos === 'center' ? 640 : (mobile ? 'calc(100vw - 2rem)' : 420),
-              width: '100%',
-              pointerEvents: 'auto',
-            }}
-          >
-            {pos === 'center' ? (
-              <div className={step === 18 ? 'text-center' : 'text-center'}>
-                {renderContent()}
-              </div>
-            ) : (
-              <div
-                className="rounded-2xl border border-[#e8dfd0] p-6"
-                style={{
-                  background: 'rgba(255,252,248,0.92)',
-                  backdropFilter: 'blur(12px)',
-                  boxShadow: '0 8px 40px rgba(0,0,0,0.08)',
-                }}
-              >
-                {renderContent()}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </AnimatePresence>
+        {/* Form overlay */}
+        <FormOverlay step={step} form={form} set={set} next={next} mobile={false} />
+      </div>
     </div>
   )
 }
