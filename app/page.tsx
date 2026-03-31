@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useGLTF, Environment, ContactShadows, Html } from '@react-three/drei'
+import { useGLTF, ContactShadows, Html, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import gsap from 'gsap'
@@ -224,13 +224,13 @@ function FerrariModel() {
   const groupRef = useRef<THREE.Group>(null)
   useFrame((_state, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.3
+      groupRef.current.rotation.y += delta * 0.25
     }
   })
 
   return (
-    <group ref={groupRef} position={[0, -0.4, 0]}>
-      <primitive object={scene} scale={1} />
+    <group ref={groupRef} position={[0, -0.5, 0]}>
+      <primitive object={scene} scale={1.4} />
     </group>
   )
 }
@@ -244,7 +244,7 @@ interface CameraRigProps {
 
 function CameraRig({ camTarget }: CameraRigProps) {
   const { camera } = useThree()
-  const lookTarget = useMemo(() => new THREE.Vector3(0, 0.2, 0), [])
+  const lookTarget = useMemo(() => new THREE.Vector3(0, 0.5, 0), [])
 
   useFrame(() => {
     camera.position.lerp(camTarget.current, 0.06)
@@ -254,16 +254,14 @@ function CameraRig({ camTarget }: CameraRigProps) {
   return null
 }
 
-function SceneBackground() {
-  const { scene } = useThree()
-  useEffect(() => {
-    const loader = new THREE.TextureLoader()
-    loader.load('/images/highway-bg.png', (texture) => {
-      scene.background = texture
-    })
-    return () => { scene.background = null }
-  }, [scene])
-  return null
+function HighwayBackground() {
+  const texture = useTexture('/images/highway-bg.png')
+  return (
+    <mesh position={[0, 0, -8]} rotation={[0, 0, 0]}>
+      <planeGeometry args={[30, 20]} />
+      <meshBasicMaterial map={texture} />
+    </mesh>
+  )
 }
 
 interface Scene3DProps {
@@ -273,17 +271,17 @@ interface Scene3DProps {
 function Scene3D({ camTarget }: Scene3DProps) {
   return (
     <>
-      <SceneBackground />
-      <fog attach="fog" args={['#c8a87a', 20, 50]} />
-
-      <Environment preset="sunset" />
+      <ambientLight intensity={0.8} color='#FFF3E0' />
+      <directionalLight position={[10, 8, 5]} intensity={2} color='#FFB347' castShadow />
+      <directionalLight position={[-5, 3, -5]} intensity={0.4} color='#87CEEB' />
 
       <Suspense fallback={null}>
+        <HighwayBackground />
         <FerrariModel />
       </Suspense>
 
       <ContactShadows
-        position={[0, -0.4, 0]}
+        position={[0, -0.49, 0]}
         opacity={0.8}
         blur={2.5}
         far={4}
@@ -847,7 +845,7 @@ export default function FunnelPage() {
 
         {/* R3F Canvas */}
         <Canvas
-          camera={{ position: [4, 1.5, 6], fov: 45 }}
+          camera={{ position: [5, 2, 8], fov: 45 }}
           gl={{ antialias: true, alpha: false }}
           shadows
           style={{ position: 'absolute', inset: 0 }}
